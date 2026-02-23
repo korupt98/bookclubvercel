@@ -82,6 +82,7 @@
       <button class="tab active" data-tab="books">Book List</button>
       <button class="tab" data-tab="add">Add Book</button>
       <button class="tab" data-tab="vote">Vote</button>
+      <button class="tab" data-tab="stats">Stats</button>
       <button class="tab hidden" data-tab="manage" id="manage-tab-btn">Manage</button>
     </div>
   </nav>
@@ -156,6 +157,9 @@
     <!-- Vote -->
     <section id="tab-vote" class="tab-pane">
       <h2>Vote</h2>
+      <div id="vote-no-books" class="alert alert-info hidden">
+        Submit at least one book first. Go to <strong>Add Book</strong> to nominate yours!
+      </div>
       <div id="vote-no-session"    class="alert alert-info    hidden">No active voting session right now.</div>
       <div id="vote-closed-notice" class="alert alert-info    hidden">Voting is closed.</div>
       <div id="vote-already-voted" class="alert alert-success hidden">Your vote has been submitted! Results will be revealed when voting closes.</div>
@@ -171,6 +175,22 @@
         <div id="results-list"></div>
         <p id="results-footer" class="dim mt-sm"></p>
       </div>
+    </section>
+
+    <!-- Stats (all logged-in members) -->
+    <section id="tab-stats" class="tab-pane">
+      <div class="section-head">
+        <h2>Stats <span id="stats-club-label" class="dim"></span></h2>
+      </div>
+      <div class="filter-bar">
+        <input type="date" id="stats-from" title="From date">
+        <span class="dim" style="white-space:nowrap">to</span>
+        <input type="date" id="stats-to" title="To date">
+        <select id="stats-member"><option value="">All members</option></select>
+        <button id="stats-run-btn" class="btn btn-primary btn-sm">Reload</button>
+      </div>
+      <div id="stats-content"></div>
+      <div id="stats-drilldown" class="analytics-drilldown hidden"></div>
     </section>
 
     <!-- Manage (club admins only) -->
@@ -218,6 +238,7 @@
           <p id="manage-results-footer" class="dim mt-sm"></p>
           <div id="manage-voter-status" class="hidden mt-sm"></div>
         </div>
+        <div id="manage-voting-history" class="mt-sm"></div>
       </div>
     </section>
   </main>
@@ -375,6 +396,7 @@
         <p id="admin-results-footer" class="dim mt-sm"></p>
         <div id="admin-voter-status" class="hidden mt-sm"></div>
       </div>
+      <div id="admin-voting-history" class="mt-lg"></div>
     </section>
 
     <!-- Analytics -->

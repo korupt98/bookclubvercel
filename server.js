@@ -501,6 +501,25 @@ app.get('/api/bookclubs/:clubId/voting/check-voted', requireClubAccess, async (r
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
+// ── Voting History ────────────────────────────────────────────────────────────
+// List all sessions (club admin)
+app.get('/api/bookclubs/:clubId/voting/sessions', requireClubAdmin, async (req, res) => {
+  try { res.json(await db.getAllSessions(parseInt(req.params.clubId))); }
+  catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
+// Vote details for one session (club admin)
+app.get('/api/bookclubs/:clubId/voting/sessions/:sid/votes', requireClubAdmin, async (req, res) => {
+  try { res.json(await db.getSessionVoteDetails(parseInt(req.params.sid))); }
+  catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
+// Delete a session + its votes (club admin)
+app.delete('/api/bookclubs/:clubId/voting/sessions/:sid', requireClubAdmin, async (req, res) => {
+  try { await db.deleteVotingSession(parseInt(req.params.sid)); res.json({ ok: true }); }
+  catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
 // ── Analytics ─────────────────────────────────────────────────────────────────
 app.get('/api/bookclubs/:clubId/analytics', requireClubAccess, async (req, res) => {
   try {

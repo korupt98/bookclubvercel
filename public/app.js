@@ -23,7 +23,14 @@ let _expandedClubs   = new Set();
 const _aState = {
   admin:  { books: [], members: [], filtered: [] },
   manage: { books: [], members: [], filtered: [] },
+  stats:  { books: [], members: [], filtered: [] },
 };
+
+function _aCtxId(ctx, admin, manage, stats) {
+  if (ctx === 'admin')  return admin;
+  if (ctx === 'manage') return manage;
+  return stats;
+}
 
 /* ── Boot ───────────────────────────────────────────────────────────────────── */
 async function init() {
@@ -326,6 +333,7 @@ function setupMemberTabs() {
       btn.classList.add('active');
       el(`tab-${btn.dataset.tab}`).classList.add('active');
       if (btn.dataset.tab === 'vote')   refreshVoteTab();
+      if (btn.dataset.tab === 'stats')  loadMemberStats();
       if (btn.dataset.tab === 'manage') loadManageTab();
     });
   });
@@ -359,6 +367,12 @@ function setupMemberListeners() {
   el('manage-analytics-to').addEventListener('change', () => applyAnalyticsFilters('manage'));
   el('manage-analytics-member').addEventListener('change', () => applyAnalyticsFilters('manage'));
 
+  // Stats tab
+  el('stats-run-btn').addEventListener('click', loadMemberStats);
+  el('stats-from').addEventListener('change', () => applyAnalyticsFilters('stats'));
+  el('stats-to').addEventListener('change', () => applyAnalyticsFilters('stats'));
+  el('stats-member').addEventListener('change', () => applyAnalyticsFilters('stats'));
+
   // Member edit modal
   el('member-edit-save-btn').addEventListener('click', saveMemberEdit);
   el('member-edit-cancel-btn').addEventListener('click', () => closeModal('member-edit-modal'));
@@ -381,6 +395,7 @@ function setupMemberListeners() {
 async function loadMemberClub() {
   const club = allClubs.find(c => c.id === currentClubId);
   if (club) el('member-club-name').textContent = club.name;
+  el('stats-club-label').textContent = club ? `— ${club.name}` : '';
   el('books-loading').classList.remove('hidden');
   el('table-wrap').classList.add('hidden');
   try {
@@ -605,7 +620,7 @@ async function refreshVoteTab() {
 }
 
 async function renderVoteTab() {
-  ['vote-no-session','vote-closed-notice','vote-already-voted','vote-area','results-area']
+  ['vote-no-books','vote-no-session','vote-closed-notice','vote-already-voted','vote-area','results-area']
     .forEach(id => el(id).classList.add('hidden'));
   if (!votingSession) { el('vote-no-session').classList.remove('hidden'); return; }
   if (votingSession.is_closed) {
@@ -616,6 +631,11 @@ async function renderVoteTab() {
   }
   const { has_voted } = await api(`/api/bookclubs/${currentClubId}/voting/check-voted`);
   if (has_voted) { el('vote-already-voted').classList.remove('hidden'); return; }
+  const myBooks = allBooks.filter(b => b.added_by_user_id === currentUser.id && b.active_for_voting && !b.selected);
+  if (!myBooks.length) {
+    el('vote-no-books').classList.remove('hidden');
+    return;
+  }
   selectedVoteIds = [];
   el('selected-count').textContent = '0';
   el('submit-vote-btn').disabled = true;
@@ -749,6 +769,7 @@ async function loadManageVoting() {
   catch { manageVotingSession = null; }
   renderManageVotingPanel();
   if (manageVotingSession) await loadManageResults();
+  await loadVotingHistory('manage', currentClubId);
 }
 
 function renderManageVotingPanel() {
@@ -795,6 +816,64 @@ async function manageCloseSession() {
     manageVotingSession = await api(`/api/bookclubs/${currentClubId}/voting/session/${manageVotingSession.id}/close`, 'PATCH');
     renderManageVotingPanel();
     await loadManageResults();
+  } catch (e) { alert(e.message); }
+}
+
+/* ── Voting History ──────────────────────────────────── */
+async function loadVotingHistory(ctx, clubId) {
+  const listId = ctx === 'admin' ? 'admin-voting-history' : 'manage-voting-history';
+  try {
+    const sessions = await api(`/api/bookclubs/${clubId}/voting/sessions`);
+    renderVotingHistory(sessions, ctx, clubId);
+  } catch { el(listId).innerHTML = ''; }
+}
+
+function renderVotingHistory(sessions, ctx, clubId) {
+  const panel = el(ctx === 'admin' ? 'admin-voting-history' : 'manage-voting-history');
+  if (!sessions.length) { panel.innerHTML = ''; return; }
+  panel.innerHTML = `<h3 style="color:var(--green);margin-bottom:.65rem">Session History</h3>` +
+    sessions.map(s => `
+      <div class="session-history-card" id="sh-${ctx}-${s.id}">
+        <div class="sh-header">
+          <div class="sh-info">
+            <span class="sh-date">Started ${fmtDate(s.created_at)}</span>
+            ${s.is_closed
+              ? `<span class="sh-status dim">Closed ${fmtDate(s.closed_at)} &middot; ${s.voter_count} voter${s.voter_count !== 1 ? 's' : ''}</span>`
+              : `<span class="sh-status" style="color:var(--green)">Open &middot; ${s.voter_count} voter${s.voter_count !== 1 ? 's' : ''}</span>`}
+          </div>
+          <div class="action-group">
+            <button class="btn btn-ghost btn-xs" onclick="toggleVoteDetails('${ctx}',${s.id},${clubId},this)">Show Votes</button>
+            <button class="btn btn-danger btn-xs" onclick="deleteSessionHistory('${ctx}',${s.id},${clubId})">Delete</button>
+          </div>
+        </div>
+        <div id="sh-votes-${ctx}-${s.id}" class="sh-votes hidden"></div>
+      </div>`
+    ).join('');
+}
+
+async function toggleVoteDetails(ctx, sessionId, clubId, btn) {
+  const panel = el(`sh-votes-${ctx}-${sessionId}`);
+  if (!panel.classList.contains('hidden')) {
+    panel.classList.add('hidden'); btn.textContent = 'Show Votes'; return;
+  }
+  btn.textContent = 'Loading…';
+  try {
+    const votes = await api(`/api/bookclubs/${clubId}/voting/sessions/${sessionId}/votes`);
+    panel.innerHTML = votes.length
+      ? `<table class="sh-votes-table"><thead><tr><th>Member</th><th>Pick 1</th><th>Pick 2</th></tr></thead><tbody>` +
+        votes.map(v => `<tr><td>${esc(v.voter_name)}</td><td>${esc(v.book1_title)}</td><td>${esc(v.book2_title)}</td></tr>`).join('') +
+        `</tbody></table>`
+      : `<p class="dim" style="padding:.5rem 0">No votes recorded.</p>`;
+    panel.classList.remove('hidden');
+    btn.textContent = 'Hide Votes';
+  } catch { btn.textContent = 'Show Votes'; }
+}
+
+async function deleteSessionHistory(ctx, sessionId, clubId) {
+  if (!confirm('Delete this voting session and all its votes? Cannot be undone.')) return;
+  try {
+    await api(`/api/bookclubs/${clubId}/voting/sessions/${sessionId}`, 'DELETE');
+    el(`sh-${ctx}-${sessionId}`)?.remove();
   } catch (e) { alert(e.message); }
 }
 
@@ -1219,6 +1298,7 @@ async function loadAdminVoting() {
   catch { votingSession = null; }
   renderAdminVotingPanel();
   if (votingSession) await loadAdminResults();
+  await loadVotingHistory('admin', adminClubId);
 }
 
 function renderAdminVotingPanel() {
@@ -1343,11 +1423,14 @@ function computeAnalyticsFromBooks(books, members) {
 
 async function loadAnalyticsCtx(ctx) {
   const clubId    = ctx === 'admin' ? adminClubId : currentClubId;
-  const contentId = ctx === 'admin' ? 'analytics-content' : 'manage-analytics-content';
+  const contentId = _aCtxId(ctx, 'analytics-content', 'manage-analytics-content', 'stats-content');
   if (!clubId) return;
   if (ctx === 'admin') {
     const club = allClubs.find(c => c.id === clubId);
     el('analytics-club-label').textContent = club ? `— ${club.name}` : '';
+  } else if (ctx === 'stats') {
+    const club = allClubs.find(c => c.id === clubId);
+    el('stats-club-label').textContent = club ? `— ${club.name}` : '';
   }
   el(contentId).innerHTML = `<p class="dim text-center mt-sm">Loading…</p>`;
   try {
@@ -1362,9 +1445,10 @@ async function loadAnalyticsCtx(ctx) {
 
 function loadAnalytics()       { return loadAnalyticsCtx('admin'); }
 function loadManageAnalytics() { return loadAnalyticsCtx('manage'); }
+function loadMemberStats()     { return loadAnalyticsCtx('stats'); }
 
 function populateAnalyticsMemberFilter(ctx) {
-  const filterId = ctx === 'admin' ? 'analytics-member' : 'manage-analytics-member';
+  const filterId = _aCtxId(ctx, 'analytics-member', 'manage-analytics-member', 'stats-member');
   const filterEl = el(filterId);
   if (!filterEl) return;
   const seen = new Map();
@@ -1382,9 +1466,9 @@ function populateAnalyticsMemberFilter(ctx) {
 }
 
 function applyAnalyticsFilters(ctx) {
-  const fromEl   = ctx === 'admin' ? 'analytics-from'   : 'manage-analytics-from';
-  const toEl     = ctx === 'admin' ? 'analytics-to'     : 'manage-analytics-to';
-  const memberEl = ctx === 'admin' ? 'analytics-member' : 'manage-analytics-member';
+  const fromEl   = _aCtxId(ctx, 'analytics-from',   'manage-analytics-from',   'stats-from');
+  const toEl     = _aCtxId(ctx, 'analytics-to',     'manage-analytics-to',     'stats-to');
+  const memberEl = _aCtxId(ctx, 'analytics-member', 'manage-analytics-member', 'stats-member');
 
   const from      = el(fromEl)?.value   || '';
   const to        = el(toEl)?.value     || '';
@@ -1411,7 +1495,7 @@ function applyAnalyticsFilters(ctx) {
 }
 
 function renderAnalytics(d, ctx) {
-  const contentId = ctx === 'admin' ? 'analytics-content' : 'manage-analytics-content';
+  const contentId = _aCtxId(ctx, 'analytics-content', 'manage-analytics-content', 'stats-content');
   const maxByUser   = Math.max(...d.by_user.map(u => u.submitted), 1);
   const maxGenre    = d.genres.length ? d.genres[0][1] : 1;
   const monthEntries= Object.entries(d.by_month).sort();
@@ -1474,7 +1558,7 @@ function showAnalyticsDrilldown(ctx, type, value) {
 }
 
 function renderDrilldownBooks(ctx, title, books) {
-  const panelId = ctx === 'admin' ? 'analytics-drilldown' : 'manage-analytics-drilldown';
+  const panelId = _aCtxId(ctx, 'analytics-drilldown', 'manage-analytics-drilldown', 'stats-drilldown');
   const panel   = el(panelId);
   panel.classList.remove('hidden');
   panel.innerHTML = `
@@ -1508,7 +1592,7 @@ function renderDrilldownBooks(ctx, title, books) {
 }
 
 function renderDrilldownMembers(ctx) {
-  const panelId = ctx === 'admin' ? 'analytics-drilldown' : 'manage-analytics-drilldown';
+  const panelId = _aCtxId(ctx, 'analytics-drilldown', 'manage-analytics-drilldown', 'stats-drilldown');
   const panel   = el(panelId);
   const members = _aState[ctx].members;
   const f       = _aState[ctx].filtered;
@@ -1545,7 +1629,7 @@ function renderDrilldownMembers(ctx) {
 }
 
 function closeAnalyticsDrilldown(ctx) {
-  const id = ctx === 'admin' ? 'analytics-drilldown' : 'manage-analytics-drilldown';
+  const id = _aCtxId(ctx, 'analytics-drilldown', 'manage-analytics-drilldown', 'stats-drilldown');
   const panel = el(id);
   panel.classList.add('hidden');
   panel.innerHTML = '';
