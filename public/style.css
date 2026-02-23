@@ -61,8 +61,8 @@ header { background:var(--green); color:#fff; padding:.85rem 1.5rem; position:st
 .header-left  { display:flex; align-items:center; gap:1rem; }
 .header-right { display:flex; align-items:center; gap:.75rem; font-size:.9rem; }
 header h1 { font-size:1.4rem; }
-.btn-ghost.btn-sm { color:#fff; border-color:rgba(255,255,255,.4); }
-.btn-ghost.btn-sm:hover { background:rgba(255,255,255,.15); }
+header .btn-ghost.btn-sm { color:#fff; border-color:rgba(255,255,255,.4); }
+header .btn-ghost.btn-sm:hover { background:rgba(255,255,255,.15); }
 .club-switcher select, .club-select-input {
   background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.35); color:#fff; border-radius:var(--radius); padding:.3rem .65rem; font:inherit; font-size:.88rem; cursor:pointer;
 }
