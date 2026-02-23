@@ -191,6 +191,20 @@
           </div>
         </div>
       </div>
+      <div class="card admin-card mt-lg">
+        <div class="section-head" style="margin-bottom:.5rem">
+          <h3 style="color:var(--green);margin:0">Analytics</h3>
+          <div class="row gap-sm flex-wrap">
+            <input type="date" id="manage-analytics-from" title="From date">
+            <span class="dim" style="white-space:nowrap">to</span>
+            <input type="date" id="manage-analytics-to" title="To date">
+            <select id="manage-analytics-member"><option value="">All members</option></select>
+            <button id="manage-analytics-run-btn" class="btn btn-primary btn-sm">Reload</button>
+          </div>
+        </div>
+        <div id="manage-analytics-content"><p class="dim text-center mt-sm">Loading…</p></div>
+        <div id="manage-analytics-drilldown" class="analytics-drilldown hidden"></div>
+      </div>
       <div class="card admin-card">
         <h3>Voting</h3>
         <div id="manage-session-status" class="status-box"></div>
@@ -367,14 +381,22 @@
     <section id="admin-tab-analytics" class="tab-pane">
       <div class="section-head">
         <h2>Analytics <span id="analytics-club-label" class="dim"></span></h2>
-        <div class="row gap-sm">
-          <input type="date" id="analytics-from" title="From date">
-          <span class="dim">to</span>
-          <input type="date" id="analytics-to" title="To date">
-          <button id="analytics-run-btn" class="btn btn-primary btn-sm">Apply</button>
-        </div>
+      </div>
+      <div class="filter-bar">
+        <input type="date" id="analytics-from" title="From date">
+        <span class="dim" style="white-space:nowrap">to</span>
+        <input type="date" id="analytics-to" title="To date">
+        <select id="analytics-member"><option value="">All members</option></select>
+        <select id="analytics-status">
+          <option value="">All books</option>
+          <option value="selected">Read only</option>
+          <option value="active">Active only</option>
+          <option value="removed">Removed only</option>
+        </select>
+        <button id="analytics-run-btn" class="btn btn-primary btn-sm">Reload</button>
       </div>
       <div id="analytics-content"></div>
+      <div id="analytics-drilldown" class="analytics-drilldown hidden"></div>
     </section>
 
     <!-- Users (superadmin) -->

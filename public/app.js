@@ -20,6 +20,11 @@ let sortField        = 'added_at';
 let sortDir          = 'desc';
 let _expandedClubs   = new Set();
 
+const _aState = {
+  admin:  { books: [], members: [], filtered: [] },
+  manage: { books: [], members: [], filtered: [] },
+};
+
 /* ── Boot ───────────────────────────────────────────────────────────────────── */
 async function init() {
   // Show public home while loading
@@ -349,6 +354,10 @@ function setupMemberListeners() {
   el('manage-create-user-btn').addEventListener('click', createMemberFromManage);
   el('manage-create-session-btn').addEventListener('click', manageCreateSession);
   el('manage-close-session-btn').addEventListener('click', manageCloseSession);
+  el('manage-analytics-run-btn').addEventListener('click', loadManageAnalytics);
+  el('manage-analytics-from').addEventListener('change', () => applyAnalyticsFilters('manage'));
+  el('manage-analytics-to').addEventListener('change', () => applyAnalyticsFilters('manage'));
+  el('manage-analytics-member').addEventListener('change', () => applyAnalyticsFilters('manage'));
 
   // Member edit modal
   el('member-edit-save-btn').addEventListener('click', saveMemberEdit);
@@ -676,6 +685,7 @@ async function loadManageTab() {
     renderManageMembers();
   } catch (e) { console.error(e); }
   await loadManageVoting();
+  await loadManageAnalytics();
 }
 
 function renderManageMembers() {
@@ -789,8 +799,7 @@ async function manageCloseSession() {
 }
 
 /* ── Book Details Modal ──────────────────────────────── */
-function showBookDetails(bookId) {
-  const b = allBooks.find(x => x.id === bookId);
+function showBookDetailsForBook(b) {
   if (!b) return;
   el('detail-title').textContent  = b.title;
   el('detail-author').textContent = b.author || 'Unknown Author';
@@ -807,6 +816,14 @@ function showBookDetails(bookId) {
   el('detail-amz-link').href = `https://www.amazon.com/s?k=${q}&i=stripbooks`;
   el('detail-gr-link').href  = `https://www.goodreads.com/search?q=${q}`;
   openModal('details-modal');
+}
+
+function showBookDetails(bookId) {
+  showBookDetailsForBook(allBooks.find(x => x.id === bookId));
+}
+
+function showDrilldownBookDetails(bookId, ctx) {
+  showBookDetailsForBook(_aState[ctx].books.find(x => x.id === bookId));
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -874,6 +891,10 @@ function setupAdminListeners() {
   el('admin-create-session-btn').addEventListener('click', adminCreateSession);
   el('admin-close-session-btn').addEventListener('click', adminCloseSession);
   el('analytics-run-btn').addEventListener('click', loadAnalytics);
+  el('analytics-from').addEventListener('change', () => applyAnalyticsFilters('admin'));
+  el('analytics-to').addEventListener('change', () => applyAnalyticsFilters('admin'));
+  el('analytics-member').addEventListener('change', () => applyAnalyticsFilters('admin'));
+  el('analytics-status').addEventListener('change', () => applyAnalyticsFilters('admin'));
   el('detail-close-btn').addEventListener('click', () => closeModal('details-modal'));
   el('edit-book-save-btn').addEventListener('click', saveEditBook);
   el('edit-book-cancel-btn').addEventListener('click', () => closeModal('edit-book-modal'));
@@ -1294,50 +1315,240 @@ async function deleteUser(id) {
 }
 
 /* ── Analytics ───────────────────────────────────────── */
-async function loadAnalytics() {
-  if (!adminClubId) return;
-  const club = allClubs.find(c => c.id === adminClubId);
-  el('analytics-club-label').textContent = club ? `— ${club.name}` : '';
-  const from = el('analytics-from').value || '';
-  const to   = el('analytics-to').value   || '';
-  try {
-    const params = new URLSearchParams();
-    if (from) params.set('from', from);
-    if (to)   params.set('to', to);
-    const data = await api(`/api/bookclubs/${adminClubId}/analytics?${params}`);
-    renderAnalytics(data);
-  } catch (e) { el('analytics-content').innerHTML = `<p class="dim">Error loading analytics.</p>`; }
+function computeAnalyticsFromBooks(books, members) {
+  const selected = books.filter(b => b.selected);
+  const by_user = members
+    .map(u => ({
+      id: u.id, name: u.name,
+      submitted: books.filter(b => b.added_by_user_id === u.id).length,
+      selected:  selected.filter(b => b.added_by_user_id === u.id).length,
+    }))
+    .filter(u => u.submitted > 0)
+    .sort((a, b) => b.submitted - a.submitted);
+  const genreMap = {};
+  for (const b of books) {
+    if (b.genre) { const g = b.genre.split(',')[0].trim(); if (g) genreMap[g]=(genreMap[g]||0)+1; }
+  }
+  const genres = Object.entries(genreMap).sort((a,b) => b[1]-a[1]);
+  const by_month = {};
+  for (const b of selected) {
+    if (b.selected_at) { const m=new Date(b.selected_at).toISOString().slice(0,7); by_month[m]=(by_month[m]||0)+1; }
+  }
+  const withPages = books.filter(b => b.page_count);
+  const avg_page_count = withPages.length
+    ? Math.round(withPages.reduce((s,b)=>s+Number(b.page_count),0)/withPages.length) : null;
+  return { total_submitted:books.length, total_read:selected.length,
+           total_members:members.length, avg_page_count, by_user, genres, by_month };
 }
 
-function renderAnalytics(d) {
+async function loadAnalyticsCtx(ctx) {
+  const clubId    = ctx === 'admin' ? adminClubId : currentClubId;
+  const contentId = ctx === 'admin' ? 'analytics-content' : 'manage-analytics-content';
+  if (!clubId) return;
+  if (ctx === 'admin') {
+    const club = allClubs.find(c => c.id === clubId);
+    el('analytics-club-label').textContent = club ? `— ${club.name}` : '';
+  }
+  el(contentId).innerHTML = `<p class="dim text-center mt-sm">Loading…</p>`;
+  try {
+    [_aState[ctx].books, _aState[ctx].members] = await Promise.all([
+      api(`/api/bookclubs/${clubId}/books`),
+      api(`/api/bookclubs/${clubId}/members`),
+    ]);
+    populateAnalyticsMemberFilter(ctx);
+    applyAnalyticsFilters(ctx);
+  } catch { el(contentId).innerHTML = `<p class="dim">Error loading analytics.</p>`; }
+}
+
+function loadAnalytics()       { return loadAnalyticsCtx('admin'); }
+function loadManageAnalytics() { return loadAnalyticsCtx('manage'); }
+
+function populateAnalyticsMemberFilter(ctx) {
+  const filterId = ctx === 'admin' ? 'analytics-member' : 'manage-analytics-member';
+  const filterEl = el(filterId);
+  if (!filterEl) return;
+  const seen = new Map();
+  for (const b of _aState[ctx].books) {
+    if (b.added_by_user_id && !seen.has(b.added_by_user_id))
+      seen.set(b.added_by_user_id, b.added_by_name || '?');
+  }
+  const submitters = [...seen.entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a,b) => a.name.localeCompare(b.name));
+  const cur = filterEl.value;
+  filterEl.innerHTML = '<option value="">All members</option>' +
+    submitters.map(u => `<option value="${u.id}">${esc(u.name)}</option>`).join('');
+  if (cur) filterEl.value = cur;
+}
+
+function applyAnalyticsFilters(ctx) {
+  const fromEl   = ctx === 'admin' ? 'analytics-from'   : 'manage-analytics-from';
+  const toEl     = ctx === 'admin' ? 'analytics-to'     : 'manage-analytics-to';
+  const memberEl = ctx === 'admin' ? 'analytics-member' : 'manage-analytics-member';
+
+  const from      = el(fromEl)?.value   || '';
+  const to        = el(toEl)?.value     || '';
+  const memberVal = parseInt(el(memberEl)?.value) || 0;
+  const statusVal = ctx === 'admin' ? (el('analytics-status')?.value || '') : '';
+
+  let books = _aState[ctx].books;
+  if (from || to) {
+    const fromTs = from ? new Date(from).getTime() : 0;
+    const toTs   = to   ? new Date(to+'T23:59:59.999Z').getTime() : Infinity;
+    books = books.filter(b => {
+      const t = new Date(b.submitted_at || b.added_at).getTime();
+      return t >= fromTs && t <= toTs;
+    });
+  }
+  if (memberVal) books = books.filter(b => b.added_by_user_id === memberVal);
+  if (statusVal === 'selected') books = books.filter(b => b.selected);
+  else if (statusVal === 'active')  books = books.filter(b => b.active_for_voting && !b.selected);
+  else if (statusVal === 'removed') books = books.filter(b => !b.active_for_voting);
+
+  _aState[ctx].filtered = books;
+  closeAnalyticsDrilldown(ctx);
+  renderAnalytics(computeAnalyticsFromBooks(books, _aState[ctx].members), ctx);
+}
+
+function renderAnalytics(d, ctx) {
+  const contentId = ctx === 'admin' ? 'analytics-content' : 'manage-analytics-content';
   const maxByUser   = Math.max(...d.by_user.map(u => u.submitted), 1);
   const maxGenre    = d.genres.length ? d.genres[0][1] : 1;
   const monthEntries= Object.entries(d.by_month).sort();
 
-  el('analytics-content').innerHTML = `
+  el(contentId).innerHTML = `
     <div class="stat-cards">
-      <div class="stat-card"><div class="stat-value">${d.total_submitted}</div><div class="stat-label">Books Submitted</div></div>
-      <div class="stat-card"><div class="stat-value">${d.total_read}</div><div class="stat-label">Books Read</div></div>
-      <div class="stat-card"><div class="stat-value">${d.total_members}</div><div class="stat-label">Members</div></div>
-      <div class="stat-card"><div class="stat-value">${d.avg_page_count ?? '—'}</div><div class="stat-label">Avg Pages</div></div>
+      <div class="stat-card clickable" onclick="showAnalyticsDrilldown('${ctx}','all')" title="Click to see these books">
+        <div class="stat-value">${d.total_submitted}</div><div class="stat-label">Books Submitted</div></div>
+      <div class="stat-card clickable" onclick="showAnalyticsDrilldown('${ctx}','selected')" title="Click to see these books">
+        <div class="stat-value">${d.total_read}</div><div class="stat-label">Books Read</div></div>
+      <div class="stat-card clickable" onclick="showAnalyticsDrilldown('${ctx}','members')" title="Click to see members">
+        <div class="stat-value">${d.total_members}</div><div class="stat-label">Members</div></div>
+      <div class="stat-card clickable" onclick="showAnalyticsDrilldown('${ctx}','pages')" title="Click to see books by page count">
+        <div class="stat-value">${d.avg_page_count ?? '—'}</div><div class="stat-label">Avg Pages</div></div>
     </div>
     ${d.by_user.length ? `<div class="analytics-section"><h3>Submissions &amp; Selections by Member</h3>
-      ${d.by_user.map(u => `<div class="bar-row">
+      ${d.by_user.map(u => `<div class="bar-row clickable" onclick="showAnalyticsDrilldown('${ctx}','member',${u.id})" title="Click to see these books">
         <div class="bar-label" title="${esc(u.name)}">${esc(u.name)}</div>
         <div class="bar-track"><div class="bar-fill" style="width:${Math.round(u.submitted/maxByUser*100)}%"></div></div>
         <div class="bar-count">${u.submitted}</div>
-        <span class="dim" style="font-size:.8rem;white-space:nowrap">${u.selected} selected</span>
+        <span class="clickable-count dim" style="font-size:.8rem;white-space:nowrap" onclick="event.stopPropagation();showAnalyticsDrilldown('${ctx}','member-selected',${u.id})" title="Click to see read books">${u.selected} selected</span>
       </div>`).join('')}</div>` : ''}
     ${d.genres.length ? `<div class="analytics-section"><h3>Genre Breakdown</h3>
-      ${d.genres.map(([g, n]) => `<div class="bar-row">
+      ${d.genres.map(([g, n]) => `<div class="bar-row clickable" onclick="showAnalyticsDrilldown('${ctx}','genre','${esc(g)}')" title="Click to see these books">
         <div class="bar-label" title="${esc(g)}">${esc(g)}</div>
         <div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/maxGenre*100)}%"></div></div>
         <div class="bar-count">${n}</div>
       </div>`).join('')}</div>` : ''}
     ${monthEntries.length ? `<div class="analytics-section"><h3>Books Read by Month</h3>
-      <div class="month-grid">${monthEntries.map(([k, n]) => `<div class="month-pill">${k} &nbsp;&#x2022;&nbsp; ${n}</div>`).join('')}</div>
+      <div class="month-grid">${monthEntries.map(([k, n]) => `<div class="month-pill clickable" onclick="showAnalyticsDrilldown('${ctx}','month','${k}')" title="Click to see these books">${k} &nbsp;&#x2022;&nbsp; ${n}</div>`).join('')}</div>
     </div>` : ''}
   `;
+}
+
+function showAnalyticsDrilldown(ctx, type, value) {
+  if (type === 'members') { renderDrilldownMembers(ctx); return; }
+  const f = _aState[ctx].filtered;
+  let books, title;
+  switch (type) {
+    case 'all':      books = f;                                title = 'All Books'; break;
+    case 'selected': books = f.filter(b => b.selected);       title = 'Books Read'; break;
+    case 'pages':    books = [...f].filter(b=>b.page_count)
+                       .sort((a,b)=>Number(b.page_count)-Number(a.page_count));
+                                                               title = 'Books by Page Count'; break;
+    case 'member': {
+      books = f.filter(b => b.added_by_user_id === value);
+      const u = _aState[ctx].members.find(m => m.id === value);
+      title = `Submitted by ${u?.name || 'member'}`; break;
+    }
+    case 'member-selected': {
+      books = f.filter(b => b.added_by_user_id === value && b.selected);
+      const u = _aState[ctx].members.find(m => m.id === value);
+      title = `Read from ${u?.name || 'member'}`; break;
+    }
+    case 'genre': books = f.filter(b=>b.genre?.split(',')[0]?.trim()===value); title = `Genre: ${value}`; break;
+    case 'month': books = f.filter(b=>b.selected_at?.slice(0,7)===value);      title = `Read in ${value}`; break;
+    default: return;
+  }
+  renderDrilldownBooks(ctx, title, books);
+}
+
+function renderDrilldownBooks(ctx, title, books) {
+  const panelId = ctx === 'admin' ? 'analytics-drilldown' : 'manage-analytics-drilldown';
+  const panel   = el(panelId);
+  panel.classList.remove('hidden');
+  panel.innerHTML = `
+    <div class="drilldown-head">
+      <h4>${esc(title)} <span class="dim">(${books.length})</span></h4>
+      <button class="btn btn-ghost btn-sm" onclick="closeAnalyticsDrilldown('${ctx}')">&#x2715; Close</button>
+    </div>
+    <div class="drilldown-body">
+      ${books.length ? books.map(b => {
+        const cover = b.cover_url
+          ? `<img src="${b.cover_url}" alt="" onerror="this.style.display='none'" class="drilldown-thumb">`
+          : `<div class="drilldown-thumb-ph">&#128214;</div>`;
+        const meta = [b.author,
+          b.page_count ? Number(b.page_count).toLocaleString()+' pp' : null,
+          b.genre?.split(',')[0]?.trim()].filter(Boolean).join(' · ');
+        const subline = [b.added_by_name ? 'by '+esc(b.added_by_name) : null, fmtDate(b.submitted_at||b.added_at)]
+          .filter(Boolean).join(' · ');
+        const selBadge = b.selected ? `<span class="badge badge-selected" style="font-size:.7rem">&#10003;</span>` : '';
+        return `<div class="drilldown-book-item">
+          ${cover}
+          <div class="drilldown-book-info">
+            <div class="drilldown-book-title">${esc(b.title)} ${selBadge}</div>
+            <div class="drilldown-book-meta">${esc(meta)}</div>
+            ${subline ? `<div class="drilldown-book-meta">${subline}</div>` : ''}
+          </div>
+          <button class="btn btn-ghost btn-xs" onclick="showDrilldownBookDetails(${b.id},'${ctx}')">Details</button>
+        </div>`;
+      }).join('') : `<p class="dim" style="padding:.75rem 0">No books.</p>`}
+    </div>`;
+  panel.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function renderDrilldownMembers(ctx) {
+  const panelId = ctx === 'admin' ? 'analytics-drilldown' : 'manage-analytics-drilldown';
+  const panel   = el(panelId);
+  const members = _aState[ctx].members;
+  const f       = _aState[ctx].filtered;
+  panel.classList.remove('hidden');
+  panel.innerHTML = `
+    <div class="drilldown-head">
+      <h4>Members <span class="dim">(${members.length})</span></h4>
+      <button class="btn btn-ghost btn-sm" onclick="closeAnalyticsDrilldown('${ctx}')">&#x2715; Close</button>
+    </div>
+    <div class="drilldown-body">
+      ${members.length ? members.map(u => {
+        const submitted = f.filter(b => b.added_by_user_id === u.id).length;
+        const selected  = f.filter(b => b.added_by_user_id === u.id && b.selected).length;
+        const roleBadge = u.club_role === 'admin'
+          ? `<span class="role-badge role-badge-admin">Club Admin</span>`
+          : `<span class="role-badge">Member</span>`;
+        const booksBtn = submitted > 0
+          ? `<button class="btn btn-ghost btn-xs" onclick="showAnalyticsDrilldown('${ctx}','member',${u.id})">Books &#8594;</button>`
+          : '';
+        return `<div class="drilldown-member-item">
+          <div class="drilldown-member-info">
+            <div style="display:flex;align-items:center;gap:.35rem">
+              <strong style="font-size:.88rem">${esc(u.name)}</strong>
+              ${roleBadge}
+            </div>
+            <div style="font-size:.78rem;color:var(--muted)">${esc(u.email || '')}</div>
+            <div style="font-size:.78rem;color:var(--muted)">${submitted} submitted &middot; ${selected} read</div>
+          </div>
+          ${booksBtn}
+        </div>`;
+      }).join('') : `<p class="dim" style="padding:.75rem 0">No members.</p>`}
+    </div>`;
+  panel.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function closeAnalyticsDrilldown(ctx) {
+  const id = ctx === 'admin' ? 'analytics-drilldown' : 'manage-analytics-drilldown';
+  const panel = el(id);
+  panel.classList.add('hidden');
+  panel.innerHTML = '';
 }
 
 /* ── Shared helpers ──────────────────────────────────── */
