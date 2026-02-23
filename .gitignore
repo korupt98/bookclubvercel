@@ -1,0 +1,12 @@
+node_modules/
+.env
+bookclub.json
+bookclub.db
+bookclub.db-shm
+bookclub.db-wal
+*.log
+*.txt
+*.ps1
+*.py
+.claude/
+db/
