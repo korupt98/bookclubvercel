@@ -468,13 +468,16 @@ function renderBooksTable() {
     if (!b.active_for_voting) badge = `<span class="badge badge-removed">Removed</span>`;
     else if (b.selected)      badge = `<span class="badge badge-selected">&#10003; Selected</span>`;
     else                      badge = `<span class="badge badge-active">Active</span>`;
+    const canToggleVoting = (isOwner || canAdmin) && !b.selected;
+    const votingCell = `<input type="checkbox" class="voting-cb" ${b.active_for_voting ? 'checked' : ''} ${canToggleVoting ? '' : 'disabled'}
+      title="${b.selected ? 'Already selected' : canToggleVoting ? 'Toggle voting eligibility' : 'Not your book'}"
+      onchange="memberToggleVoting(${b.id})">`;
     const actions = [`<button class="btn btn-ghost btn-xs" onclick="showBookDetails(${b.id})">Details</button>`];
     if (canAdmin) {
       actions.push(`<button class="btn btn-ghost btn-xs" onclick="memberOpenEditBook(${b.id})">Edit</button>`);
     } else if (isOwner) {
       actions.push(`<button class="btn btn-ghost btn-xs" onclick="memberOpenOwnEdit(${b.id})">Edit</button>`);
     }
-    if (isOwner || canAdmin) actions.push(`<button class="btn btn-ghost btn-xs" onclick="memberToggleVoting(${b.id})">${b.active_for_voting ? 'Remove' : 'Restore'}</button>`);
     return `<tr class="${!b.active_for_voting ? 'inactive' : ''}">
       <td>${cover}</td>
       <td><strong>${esc(b.title)}</strong></td>
@@ -483,6 +486,7 @@ function renderBooksTable() {
       <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
       <td>${esc(b.added_by_name || '—')}</td>
       <td>${fmtDate(b.submitted_at || b.added_at)}</td>
+      <td class="td-voting">${votingCell}</td>
       <td>${badge}</td>
       <td>${b.selected_at ? fmtDate(b.selected_at) : '—'}</td>
       <td><div class="action-group">${actions.join('')}</div></td>
@@ -1222,7 +1226,7 @@ function populateSubmitterSelect(selectId) {
 
 function renderAdminBooksTable() {
   const tbody = el('admin-books-tbody');
-  if (!allBooks.length) { tbody.innerHTML = `<tr><td colspan="10" class="empty-state">No books yet.</td></tr>`; return; }
+  if (!allBooks.length) { tbody.innerHTML = `<tr><td colspan="11" class="empty-state">No books yet.</td></tr>`; return; }
   tbody.innerHTML = allBooks.map(b => {
     const cover = b.cover_url
       ? `<img class="thumb" src="${b.cover_url}" alt="" onerror="this.outerHTML='<div class=thumb-ph>&#128214;</div>'">`
@@ -1230,7 +1234,10 @@ function renderAdminBooksTable() {
     const selectedBadge = b.selected
       ? `<span class="badge badge-selected">&#10003;</span>`
       : `<span class="badge badge-active">No</span>`;
-    return `<tr>
+    const votingCb = `<input type="checkbox" class="voting-cb" ${b.active_for_voting ? 'checked' : ''} ${b.selected ? 'disabled' : ''}
+      title="${b.selected ? 'Already selected' : 'Toggle voting eligibility'}"
+      onchange="adminToggleVoting(${b.id})">`;
+    return `<tr class="${!b.active_for_voting ? 'inactive' : ''}">
       <td>${cover}</td>
       <td><strong>${esc(b.title)}</strong></td>
       <td>${esc(b.author || '—')}</td>
@@ -1238,6 +1245,7 @@ function renderAdminBooksTable() {
       <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
       <td>${esc(b.added_by_name || '—')}</td>
       <td>${fmtDate(b.submitted_at || b.added_at)}</td>
+      <td class="td-voting">${votingCb}</td>
       <td>${selectedBadge}</td>
       <td>${b.selected_at ? fmtDate(b.selected_at) : '—'}</td>
       <td><div class="action-group">
@@ -1247,6 +1255,15 @@ function renderAdminBooksTable() {
       </div></td>
     </tr>`;
   }).join('');
+}
+
+async function adminToggleVoting(id) {
+  try {
+    const updated = await api(`/api/bookclubs/${adminClubId}/books/${id}/toggle-voting`, 'PATCH', {});
+    const idx = allBooks.findIndex(b => b.id === id);
+    if (idx !== -1) allBooks[idx] = updated;
+    renderAdminBooksTable();
+  } catch (e) { alert(e.message); }
 }
 
 async function adminPickBook(i) {
