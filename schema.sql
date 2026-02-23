@@ -72,6 +72,22 @@ CREATE TABLE IF NOT EXISTS votes (
 -- Allow email to be optional (users who sign in via Google only)
 ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
 
+-- Configurable voting sessions
+ALTER TABLE voting_sessions ADD COLUMN IF NOT EXISTS votes_per_member INT NOT NULL DEFAULT 2;
+
+CREATE TABLE IF NOT EXISTS session_books (
+  session_id INT NOT NULL REFERENCES voting_sessions(id) ON DELETE CASCADE,
+  book_id    INT NOT NULL REFERENCES books(id)           ON DELETE CASCADE,
+  PRIMARY KEY (session_id, book_id)
+);
+
+CREATE TABLE IF NOT EXISTS vote_entries (
+  id       SERIAL PRIMARY KEY,
+  vote_id  INT NOT NULL REFERENCES votes(id) ON DELETE CASCADE,
+  book_id  INT REFERENCES books(id) ON DELETE CASCADE,
+  UNIQUE (vote_id, book_id)
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_token    ON auth_sessions(token);
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id  ON auth_sessions(user_id);
@@ -83,3 +99,5 @@ CREATE INDEX IF NOT EXISTS idx_voting_sessions_club   ON voting_sessions(bookclu
 CREATE INDEX IF NOT EXISTS idx_votes_session          ON votes(session_id);
 CREATE INDEX IF NOT EXISTS idx_votes_voter            ON votes(voter_user_id);
 CREATE INDEX IF NOT EXISTS idx_users_google_id        ON users(google_id);
+CREATE INDEX IF NOT EXISTS idx_session_books_session  ON session_books(session_id);
+CREATE INDEX IF NOT EXISTS idx_vote_entries_vote      ON vote_entries(vote_id);

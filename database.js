@@ -25,6 +25,16 @@ async function init() {
       [superadminEmail]
     );
   }
+
+  // Migrate old book_id_1 / book_id_2 votes → vote_entries (idempotent)
+  await pool.query(`
+    INSERT INTO vote_entries (vote_id, book_id)
+    SELECT v.id, unnest(ARRAY[v.book_id_1, v.book_id_2])
+    FROM votes v
+    WHERE (v.book_id_1 IS NOT NULL OR v.book_id_2 IS NOT NULL)
+    ON CONFLICT DO NOTHING
+  `);
+
   console.log('Database initialized');
 }
 
@@ -305,7 +315,14 @@ async function getLatestSession(clubId) {
     'SELECT * FROM voting_sessions WHERE bookclub_id = $1 ORDER BY created_at DESC LIMIT 1',
     [clubId]
   );
-  return rows[0] || null;
+  if (!rows[0]) return null;
+  const session = rows[0];
+  session.votes_per_member = Number(session.votes_per_member);
+  const { rows: sb } = await pool.query(
+    'SELECT book_id FROM session_books WHERE session_id = $1', [session.id]
+  );
+  session.session_book_ids = sb.map(r => r.book_id);
+  return session;
 }
 
 async function getOpenSession(clubId) {
@@ -313,15 +330,32 @@ async function getOpenSession(clubId) {
     'SELECT * FROM voting_sessions WHERE bookclub_id = $1 AND is_closed = FALSE LIMIT 1',
     [clubId]
   );
-  return rows[0] || null;
+  if (!rows[0]) return null;
+  const session = rows[0];
+  session.votes_per_member = Number(session.votes_per_member);
+  const { rows: sb } = await pool.query(
+    'SELECT book_id FROM session_books WHERE session_id = $1', [session.id]
+  );
+  session.session_book_ids = sb.map(r => r.book_id);
+  return session;
 }
 
-async function insertSession(clubId) {
+async function insertSession(clubId, votesPerMember, bookIds) {
   const { rows } = await pool.query(
-    'INSERT INTO voting_sessions (bookclub_id) VALUES ($1) RETURNING *',
-    [clubId]
+    'INSERT INTO voting_sessions (bookclub_id, votes_per_member) VALUES ($1, $2) RETURNING *',
+    [clubId, votesPerMember || 2]
   );
-  return rows[0];
+  const session = rows[0];
+  if (bookIds?.length) {
+    await pool.query(
+      `INSERT INTO session_books (session_id, book_id)
+       SELECT $1, unnest($2::int[])`,
+      [session.id, bookIds]
+    );
+  }
+  session.session_book_ids = bookIds || [];
+  session.votes_per_member = Number(session.votes_per_member);
+  return session;
 }
 
 async function closeSession(sid) {
@@ -347,22 +381,28 @@ async function hasVoted(sessionId, userId) {
   return rows.length > 0;
 }
 
-async function insertVote({ session_id, voter_user_id, voter_name, book_id_1, book_id_2 }) {
+async function insertVote({ session_id, voter_user_id, voter_name, book_ids }) {
   const { rows } = await pool.query(
-    `INSERT INTO votes (session_id, voter_user_id, voter_name, book_id_1, book_id_2)
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [session_id, voter_user_id, voter_name, book_id_1, book_id_2]
+    `INSERT INTO votes (session_id, voter_user_id, voter_name) VALUES ($1, $2, $3) RETURNING *`,
+    [session_id, voter_user_id, voter_name]
   );
-  return rows[0];
+  const vote = rows[0];
+  for (const bid of book_ids) {
+    await pool.query(
+      'INSERT INTO vote_entries (vote_id, book_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [vote.id, bid]
+    );
+  }
+  return vote;
 }
 
 async function getResults(sessionId, clubId = null) {
   const { rows: voteCounts } = await pool.query(
-    `SELECT book_id, COUNT(*) AS cnt FROM (
-       SELECT book_id_1 AS book_id FROM votes WHERE session_id = $1
-       UNION ALL
-       SELECT book_id_2 AS book_id FROM votes WHERE session_id = $1
-     ) t GROUP BY book_id ORDER BY cnt DESC`,
+    `SELECT ve.book_id, COUNT(*) AS cnt
+     FROM vote_entries ve
+     JOIN votes v ON v.id = ve.vote_id
+     WHERE v.session_id = $1
+     GROUP BY ve.book_id ORDER BY cnt DESC`,
     [sessionId]
   );
   const { rows: voterRows } = await pool.query(
@@ -399,16 +439,18 @@ async function getAllSessions(clubId) {
      GROUP BY vs.id ORDER BY vs.created_at DESC`,
     [clubId]
   );
-  return rows.map(s => ({ ...s, voter_count: Number(s.voter_count) }));
+  return rows.map(s => ({ ...s, voter_count: Number(s.voter_count), votes_per_member: Number(s.votes_per_member) }));
 }
 
 async function getSessionVoteDetails(sessionId) {
   const { rows } = await pool.query(
-    `SELECT v.voter_name, b1.title AS book1_title, b2.title AS book2_title
+    `SELECT v.voter_name, array_agg(b.title ORDER BY ve.id) AS book_titles
      FROM votes v
-     JOIN books b1 ON b1.id = v.book_id_1
-     JOIN books b2 ON b2.id = v.book_id_2
-     WHERE v.session_id = $1 ORDER BY v.voter_name`,
+     JOIN vote_entries ve ON ve.vote_id = v.id
+     JOIN books b ON b.id = ve.book_id
+     WHERE v.session_id = $1
+     GROUP BY v.id, v.voter_name
+     ORDER BY v.voter_name`,
     [sessionId]
   );
   return rows;

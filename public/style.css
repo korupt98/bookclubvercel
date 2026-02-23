@@ -355,6 +355,19 @@ tr.inactive td { opacity:.55; }
 .sh-votes-table td { padding:.25rem .5rem; border-bottom:1px solid var(--border-soft); }
 .sh-votes-table tr:last-child td { border-bottom:none; }
 
+/* ── Session config form ─────────────────────────────── */
+.session-config-inner { background:var(--bg); border-radius:var(--radius); padding:.85rem; }
+.session-picks-input { width:100%; padding:.4rem .65rem; border:2px solid var(--border); border-radius:var(--radius); font:inherit; }
+.session-picks-input:focus { outline:none; border-color:var(--green); }
+.session-book-list { margin-top:.75rem; max-height:260px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); }
+.session-book-list-head { display:flex; justify-content:space-between; align-items:center; padding:.45rem .7rem; border-bottom:1px solid var(--border-soft); position:sticky; top:0; background:var(--surface); }
+.session-book-item { display:flex; align-items:center; gap:.55rem; padding:.4rem .7rem; border-bottom:1px solid var(--border-soft); cursor:pointer; transition:background .1s; }
+.session-book-item:last-child { border-bottom:none; }
+.session-book-item:hover { background:var(--bg); }
+.session-book-item input[type="checkbox"] { flex-shrink:0; accent-color:var(--green); width:15px; height:15px; }
+.session-book-title { font-size:.86rem; font-weight:600; }
+.sh-picks { font-size:.75rem; }
+
 /* ── Responsive ──────────────────────────────────────── */
 @media (max-width:700px) {
   .two-col, .three-col, .admin-two-col { grid-template-columns:1fr; }

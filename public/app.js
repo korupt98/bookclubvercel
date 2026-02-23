@@ -631,7 +631,14 @@ async function renderVoteTab() {
   }
   const { has_voted } = await api(`/api/bookclubs/${currentClubId}/voting/check-voted`);
   if (has_voted) { el('vote-already-voted').classList.remove('hidden'); return; }
-  const myBooks = allBooks.filter(b => b.added_by_user_id === currentUser.id && b.active_for_voting && !b.selected);
+  const picks = votingSession.votes_per_member || 2;
+  el('vote-pick-count').textContent = picks;
+  el('vote-pick-max').textContent   = picks;
+  const sessionBookIds = votingSession.session_book_ids || [];
+  const eligibleBooks = sessionBookIds.length
+    ? allBooks.filter(b => sessionBookIds.includes(b.id) && b.active_for_voting && !b.selected)
+    : allBooks.filter(b => b.active_for_voting && !b.selected);
+  const myBooks = eligibleBooks.filter(b => b.added_by_user_id === currentUser.id);
   if (!myBooks.length) {
     el('vote-no-books').classList.remove('hidden');
     return;
@@ -645,7 +652,10 @@ async function renderVoteTab() {
 }
 
 function renderVoteGrid() {
-  const active = allBooks.filter(b => b.active_for_voting && !b.selected);
+  const sessionBookIds = votingSession?.session_book_ids || [];
+  const active = sessionBookIds.length
+    ? allBooks.filter(b => sessionBookIds.includes(b.id) && b.active_for_voting && !b.selected)
+    : allBooks.filter(b => b.active_for_voting && !b.selected);
   const grid = el('vote-grid');
   if (!active.length) { grid.innerHTML = `<p class="dim">No books available for voting.</p>`; return; }
   grid.innerHTML = active.map(b => {
@@ -662,22 +672,23 @@ function renderVoteGrid() {
 }
 
 function toggleVoteCard(id) {
+  const maxPicks = votingSession?.votes_per_member || 2;
   const card = document.querySelector(`.vote-card[data-id="${id}"]`);
   if (selectedVoteIds.includes(id)) {
     selectedVoteIds = selectedVoteIds.filter(x => x !== id);
     card.classList.remove('chosen');
-  } else if (selectedVoteIds.length < 2) {
+  } else if (selectedVoteIds.length < maxPicks) {
     selectedVoteIds.push(id); card.classList.add('chosen');
   }
   qsa('.vote-card').forEach(c => {
-    c.classList.toggle('locked', !selectedVoteIds.includes(+c.dataset.id) && selectedVoteIds.length >= 2);
+    c.classList.toggle('locked', !selectedVoteIds.includes(+c.dataset.id) && selectedVoteIds.length >= maxPicks);
   });
   el('selected-count').textContent = selectedVoteIds.length;
-  el('submit-vote-btn').disabled = selectedVoteIds.length !== 2;
+  el('submit-vote-btn').disabled = selectedVoteIds.length !== maxPicks;
 }
 
 async function submitVote() {
-  if (selectedVoteIds.length !== 2) return;
+  if (selectedVoteIds.length !== (votingSession?.votes_per_member || 2)) return;
   try {
     await api(`/api/bookclubs/${currentClubId}/voting/vote`, 'POST', { book_ids: selectedVoteIds });
     el('vote-area').classList.add('hidden');
@@ -804,10 +815,77 @@ async function loadManageResults() {
 }
 
 async function manageCreateSession() {
+  showStartSessionForm('manage', currentClubId);
+}
+
+/* ── Session config form ─────────────────────────────── */
+async function showStartSessionForm(ctx, clubId) {
+  const configId = ctx === 'admin' ? 'admin-session-config' : 'manage-session-config';
+  const panel = el(configId);
+  panel.innerHTML = '<p class="dim">Loading books…</p>';
+  panel.classList.remove('hidden');
   try {
-    manageVotingSession = await api(`/api/bookclubs/${currentClubId}/voting/session`, 'POST');
-    renderManageVotingPanel();
-  } catch (e) { alert(e.message); }
+    const books = (await api(`/api/bookclubs/${clubId}/books`))
+      .filter(b => b.active_for_voting && !b.selected);
+    if (!books.length) {
+      panel.innerHTML = '<p class="dim">No eligible books to include in the ballot.</p>'; return;
+    }
+    panel.innerHTML = `
+      <div class="session-config-inner">
+        <div class="field" style="max-width:200px">
+          <label>Picks per member</label>
+          <input type="number" id="${ctx}-votes-per-member" value="2" min="1" max="${books.length}" class="session-picks-input">
+        </div>
+        <div class="session-book-list">
+          <div class="session-book-list-head">
+            <span class="dim" style="font-size:.85rem">Books in ballot</span>
+            <div class="action-group">
+              <button class="btn btn-ghost btn-xs" onclick="setAllSessionBooks('${ctx}',true)">All</button>
+              <button class="btn btn-ghost btn-xs" onclick="setAllSessionBooks('${ctx}',false)">None</button>
+            </div>
+          </div>
+          ${books.map(b => `
+            <label class="session-book-item">
+              <input type="checkbox" class="session-book-cb" data-ctx="${ctx}" value="${b.id}" checked>
+              <span class="session-book-title">${esc(b.title)}</span>
+              <span class="dim" style="font-size:.78rem">${esc(b.author || '')}</span>
+            </label>`).join('')}
+        </div>
+        <div class="row gap-sm mt-sm">
+          <button class="btn btn-primary btn-sm" onclick="submitStartSession('${ctx}',${clubId})">Start Vote</button>
+          <button class="btn btn-secondary btn-sm" onclick="cancelStartSession('${ctx}')">Cancel</button>
+        </div>
+        <p id="${ctx}-start-session-msg" class="msg hidden"></p>
+      </div>`;
+  } catch { panel.innerHTML = '<p class="dim">Error loading books.</p>'; }
+}
+
+function setAllSessionBooks(ctx, checked) {
+  document.querySelectorAll(`.session-book-cb[data-ctx="${ctx}"]`)
+    .forEach(cb => cb.checked = checked);
+}
+
+function cancelStartSession(ctx) {
+  const configId = ctx === 'admin' ? 'admin-session-config' : 'manage-session-config';
+  el(configId).classList.add('hidden');
+  el(configId).innerHTML = '';
+}
+
+async function submitStartSession(ctx, clubId) {
+  const n = parseInt(el(`${ctx}-votes-per-member`).value);
+  const book_ids = [...document.querySelectorAll(`.session-book-cb[data-ctx="${ctx}"]:checked`)]
+    .map(cb => parseInt(cb.value));
+  if (!book_ids.length)
+    return showMsg(`${ctx}-start-session-msg`, 'Select at least one book', 'error');
+  if (book_ids.length < n)
+    return showMsg(`${ctx}-start-session-msg`, `Need at least ${n} books for ${n} picks per member`, 'error');
+  try {
+    const session = await api(`/api/bookclubs/${clubId}/voting/session`, 'POST',
+      { votes_per_member: n, book_ids });
+    cancelStartSession(ctx);
+    if (ctx === 'admin') { votingSession = session; renderAdminVotingPanel(); await loadAdminResults(); await loadVotingHistory('admin', adminClubId); }
+    else { manageVotingSession = session; renderManageVotingPanel(); await loadManageResults(); await loadVotingHistory('manage', currentClubId); }
+  } catch (e) { showMsg(`${ctx}-start-session-msg`, e.message, 'error'); }
 }
 
 async function manageCloseSession() {
@@ -840,6 +918,7 @@ function renderVotingHistory(sessions, ctx, clubId) {
             ${s.is_closed
               ? `<span class="sh-status dim">Closed ${fmtDate(s.closed_at)} &middot; ${s.voter_count} voter${s.voter_count !== 1 ? 's' : ''}</span>`
               : `<span class="sh-status" style="color:var(--green)">Open &middot; ${s.voter_count} voter${s.voter_count !== 1 ? 's' : ''}</span>`}
+            <span class="sh-picks dim">${s.votes_per_member || 2} pick${(s.votes_per_member || 2) !== 1 ? 's' : ''} per voter</span>
           </div>
           <div class="action-group">
             <button class="btn btn-ghost btn-xs" onclick="toggleVoteDetails('${ctx}',${s.id},${clubId},this)">Show Votes</button>
@@ -860,8 +939,8 @@ async function toggleVoteDetails(ctx, sessionId, clubId, btn) {
   try {
     const votes = await api(`/api/bookclubs/${clubId}/voting/sessions/${sessionId}/votes`);
     panel.innerHTML = votes.length
-      ? `<table class="sh-votes-table"><thead><tr><th>Member</th><th>Pick 1</th><th>Pick 2</th></tr></thead><tbody>` +
-        votes.map(v => `<tr><td>${esc(v.voter_name)}</td><td>${esc(v.book1_title)}</td><td>${esc(v.book2_title)}</td></tr>`).join('') +
+      ? `<table class="sh-votes-table"><thead><tr><th>Member</th><th>Books Chosen</th></tr></thead><tbody>` +
+        votes.map(v => `<tr><td>${esc(v.voter_name)}</td><td>${v.book_titles.map(t => esc(t)).join(', ')}</td></tr>`).join('') +
         `</tbody></table>`
       : `<p class="dim" style="padding:.5rem 0">No votes recorded.</p>`;
     panel.classList.remove('hidden');
@@ -1333,10 +1412,7 @@ async function loadAdminResults() {
 }
 
 async function adminCreateSession() {
-  try {
-    votingSession = await api(`/api/bookclubs/${adminClubId}/voting/session`, 'POST');
-    renderAdminVotingPanel();
-  } catch (e) { alert(e.message); }
+  showStartSessionForm('admin', adminClubId);
 }
 
 async function adminCloseSession() {

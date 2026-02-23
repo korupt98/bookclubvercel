@@ -164,8 +164,8 @@
       <div id="vote-closed-notice" class="alert alert-info    hidden">Voting is closed.</div>
       <div id="vote-already-voted" class="alert alert-success hidden">Your vote has been submitted! Results will be revealed when voting closes.</div>
       <div id="vote-area" class="hidden">
-        <p class="vote-hint">Select <strong>exactly 2 books</strong> you want to read next:</p>
-        <p class="vote-counter">Selected: <span id="selected-count">0</span> / 2</p>
+        <p class="vote-hint">Select <strong>exactly <span id="vote-pick-count">2</span> book(s)</strong> you want to read next:</p>
+        <p class="vote-counter">Selected: <span id="selected-count">0</span> / <span id="vote-pick-max">2</span></p>
         <div id="vote-grid" class="vote-grid"></div>
         <button id="submit-vote-btn" class="btn btn-primary" disabled>Submit My Vote</button>
         <p id="vote-msg" class="msg hidden"></p>
@@ -232,6 +232,7 @@
           <button id="manage-create-session-btn" class="btn btn-primary btn-sm">Start New Session</button>
           <button id="manage-close-session-btn" class="btn btn-danger btn-sm hidden">Close Voting &amp; Reveal Results</button>
         </div>
+        <div id="manage-session-config" class="session-config hidden mt-sm"></div>
         <div id="manage-results-card" class="hidden mt-sm">
           <h4 style="color:var(--muted);margin-bottom:.5rem">Live Results</h4>
           <div id="manage-results-list"></div>
@@ -389,6 +390,7 @@
           <button id="admin-create-session-btn" class="btn btn-primary">Start New Session</button>
           <button id="admin-close-session-btn" class="btn btn-danger hidden">Close Voting &amp; Reveal Results</button>
         </div>
+        <div id="admin-session-config" class="session-config hidden mt-sm"></div>
       </div>
       <div id="admin-results-card" class="card admin-card hidden">
         <h3>Live Results (only you can see these)</h3>

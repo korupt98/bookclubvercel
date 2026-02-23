@@ -443,9 +443,20 @@ app.get('/api/bookclubs/:clubId/voting/session', requireClubAccess, async (req, 
 
 app.post('/api/bookclubs/:clubId/voting/session', requireClubAdmin, async (req, res) => {
   const clubId = parseInt(req.params.clubId);
+  const { votes_per_member = 2, book_ids = [] } = req.body;
+  if (!Number.isInteger(votes_per_member) || votes_per_member < 1)
+    return res.status(400).json({ error: 'votes_per_member must be a positive integer' });
+  if (!book_ids.length)
+    return res.status(400).json({ error: 'Select at least one book for the ballot' });
+  if (book_ids.length < votes_per_member)
+    return res.status(400).json({ error: `Need at least ${votes_per_member} books for ${votes_per_member} picks` });
   try {
     if (await db.getOpenSession(clubId)) return res.status(409).json({ error: 'Session already open' });
-    res.status(201).json(await db.insertSession(clubId));
+    for (const id of book_ids) {
+      const b = await db.getBook(id);
+      if (!b || b.bookclub_id !== clubId) return res.status(400).json({ error: 'Invalid book in ballot' });
+    }
+    res.status(201).json(await db.insertSession(clubId, votes_per_member, book_ids));
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
@@ -460,23 +471,25 @@ app.patch('/api/bookclubs/:clubId/voting/session/:sid/close', requireClubAdmin, 
 app.post('/api/bookclubs/:clubId/voting/vote', requireClubAccess, async (req, res) => {
   const clubId = parseInt(req.params.clubId);
   const { book_ids } = req.body;
-  if (!Array.isArray(book_ids) || book_ids.length !== 2 || book_ids[0] === book_ids[1]) {
-    return res.status(400).json({ error: 'Select exactly 2 different books' });
-  }
   try {
     const session = await db.getLatestSession(clubId);
     if (!session || session.is_closed) return res.status(400).json({ error: 'No open voting session' });
+    const n = session.votes_per_member || 2;
+    if (!Array.isArray(book_ids) || book_ids.length !== n || new Set(book_ids).size !== n)
+      return res.status(400).json({ error: `Select exactly ${n} different book${n !== 1 ? 's' : ''}` });
     if (await db.hasVoted(session.id, req.user.id)) return res.status(409).json({ error: 'Already voted' });
+    const ballotIds = session.session_book_ids || [];
     for (const id of book_ids) {
-      const b = await db.getBook(id);
-      if (!b || !b.active_for_voting || b.bookclub_id !== clubId) {
-        return res.status(400).json({ error: 'Invalid book selection' });
+      if (ballotIds.length && !ballotIds.includes(id))
+        return res.status(400).json({ error: "Book not in this session's ballot" });
+      if (!ballotIds.length) {
+        const b = await db.getBook(id);
+        if (!b || !b.active_for_voting || b.bookclub_id !== clubId)
+          return res.status(400).json({ error: 'Invalid book selection' });
       }
     }
-    await db.insertVote({
-      session_id: session.id, voter_user_id: req.user.id,
-      voter_name: req.user.name, book_id_1: book_ids[0], book_id_2: book_ids[1],
-    });
+    await db.insertVote({ session_id: session.id, voter_user_id: req.user.id,
+      voter_name: req.user.name, book_ids });
     res.status(201).json({ message: 'Vote submitted!' });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
