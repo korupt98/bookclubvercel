@@ -124,6 +124,23 @@ app.post('/api/auth/google', async (req, res) => {
   }
 });
 
+app.post('/api/auth/quick', async (req, res) => {
+  const { user_id, club_id } = req.body;
+  if (!user_id || !club_id) return res.status(400).json({ error: 'user_id and club_id required' });
+  try {
+    const inClub = await db.isUserInBookclub(parseInt(user_id), parseInt(club_id));
+    if (!inClub) return res.status(403).json({ error: 'Not a member of this club' });
+    const user = await db.getUser(parseInt(user_id));
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const token = generateToken();
+    await db.createSession(user.id, token);
+    await db.updateUser(user.id, { last_login: new Date().toISOString() });
+    const clubs = await db.getUserBookclubs(user.id);
+    const { password_hash, ...safe } = user;
+    res.json({ token, user: { ...safe, bookclubs: clubs } });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
 app.post('/api/auth/logout', requireAuth, async (req, res) => {
   const token = req.headers.authorization?.replace('Bearer ', '').trim();
   if (token) await db.deleteSession(token);
@@ -177,6 +194,13 @@ app.delete('/api/bookclubs/:clubId', requireSuperAdmin, async (req, res) => {
 });
 
 // ── Members ───────────────────────────────────────────────────────────────────
+app.get('/api/bookclubs/:clubId/members/quick', async (req, res) => {
+  try {
+    const members = await db.getBookclubMembers(parseInt(req.params.clubId));
+    res.json(members.map(m => ({ id: m.id, name: m.name })));
+  } catch (e) { res.status(500).json({ error: 'Server error' }); }
+});
+
 app.get('/api/bookclubs/:clubId/members', requireClubAccess, async (req, res) => {
   try {
     res.json(await db.getBookclubMembers(parseInt(req.params.clubId)));
@@ -365,13 +389,24 @@ app.post('/api/bookclubs/:clubId/books', requireClubAccess, async (req, res) => 
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
-app.patch('/api/bookclubs/:clubId/books/:id', requireClubAdmin, async (req, res) => {
-  const allowed = ['title','author','genre','page_count','description','submitted_at',
-                   'selected','selected_at','added_by_name','added_by_user_id','active_for_voting'];
-  const fields = {};
-  for (const k of allowed) { if (req.body[k] !== undefined) fields[k] = req.body[k]; }
+app.patch('/api/bookclubs/:clubId/books/:id', requireClubAccess, async (req, res) => {
+  const clubId = parseInt(req.params.clubId);
+  const bookId = parseInt(req.params.id);
   try {
-    const updated = await db.updateBook(parseInt(req.params.id), fields);
+    const book = await db.getBook(bookId);
+    if (!book || book.bookclub_id !== clubId) return res.status(404).json({ error: 'Not found' });
+    const clubRole     = await db.getClubRole(req.user.id, clubId);
+    const isPrivileged = req.user.role === 'superadmin' || clubRole === 'admin';
+    const isOwner      = book.added_by_user_id === req.user.id;
+    if (!isPrivileged && !isOwner)
+      return res.status(403).json({ error: 'You can only edit your own books' });
+    const adminFields  = ['title','author','genre','page_count','description','submitted_at',
+                          'selected','selected_at','added_by_name','added_by_user_id','active_for_voting'];
+    const memberFields = ['title','author','page_count','description'];
+    const allowed = isPrivileged ? adminFields : memberFields;
+    const fields = {};
+    for (const k of allowed) { if (req.body[k] !== undefined) fields[k] = req.body[k]; }
+    const updated = await db.updateBook(bookId, fields);
     if (!updated) return res.status(404).json({ error: 'Not found' });
     res.json(updated);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }

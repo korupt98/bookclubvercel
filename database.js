@@ -356,7 +356,7 @@ async function insertVote({ session_id, voter_user_id, voter_name, book_id_1, bo
   return rows[0];
 }
 
-async function getResults(sessionId) {
+async function getResults(sessionId, clubId = null) {
   const { rows: voteCounts } = await pool.query(
     `SELECT book_id, COUNT(*) AS cnt FROM (
        SELECT book_id_1 AS book_id FROM votes WHERE session_id = $1
@@ -375,7 +375,19 @@ async function getResults(sessionId) {
     const book = await getBook(row.book_id);
     if (book) results.push({ ...book, vote_count: Number(row.cnt) });
   }
-  return { results, total_voters: Number(voterRows[0]?.cnt || 0) };
+
+  let voter_status = null;
+  if (clubId) {
+    const members = await getBookclubMembers(clubId);
+    const { rows: voted } = await pool.query(
+      'SELECT DISTINCT voter_user_id FROM votes WHERE session_id = $1 AND voter_user_id IS NOT NULL',
+      [sessionId]
+    );
+    const votedIds = new Set(voted.map(r => Number(r.voter_user_id)));
+    voter_status = members.map(m => ({ id: m.id, name: m.name, voted: votedIds.has(m.id) }));
+  }
+
+  return { results, total_voters: Number(voterRows[0]?.cnt || 0), voter_status };
 }
 
 /* ── Analytics ──────────────────────────────────────────────────────────────── */

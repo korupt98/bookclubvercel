@@ -41,6 +41,21 @@
     <div class="divider"><span>or</span></div>
     <div id="google-signin-btn"></div>
     <button id="login-back-btn" class="btn btn-ghost btn-full mt-sm">← Back</button>
+    <div class="divider"><span>or quick sign in</span></div>
+    <div class="field">
+      <label>Club</label>
+      <select id="quick-club-select">
+        <option value="">— select club —</option>
+      </select>
+    </div>
+    <div id="quick-member-field" class="field hidden">
+      <label>Your Name</label>
+      <select id="quick-member-select">
+        <option value="">— select name —</option>
+      </select>
+    </div>
+    <button id="quick-signin-btn" class="btn btn-secondary btn-full" disabled>Quick Sign In</button>
+    <p id="quick-error" class="msg msg-error hidden"></p>
   </div>
 </div>
 
@@ -431,6 +446,27 @@
       <button id="edit-book-cancel-btn" class="btn btn-secondary">Cancel</button>
     </div>
     <p id="edit-book-msg" class="msg hidden"></p>
+  </div>
+</div>
+
+<!-- Member Edit Book Modal -->
+<div id="member-edit-modal" class="modal">
+  <div class="modal-box">
+    <h2>Edit Book</h2>
+    <input type="hidden" id="member-edit-book-id">
+    <div class="field"><label>Title</label>
+      <input type="text" id="member-edit-title"></div>
+    <div class="field"><label>Author</label>
+      <input type="text" id="member-edit-author"></div>
+    <div class="field"><label>Page Count</label>
+      <input type="number" id="member-edit-page-count" min="1"></div>
+    <div class="field"><label>Description / Summary</label>
+      <textarea id="member-edit-desc" rows="5"></textarea></div>
+    <div class="row gap-sm mt-sm">
+      <button id="member-edit-save-btn" class="btn btn-primary">Save</button>
+      <button id="member-edit-cancel-btn" class="btn btn-secondary">Cancel</button>
+    </div>
+    <p id="member-edit-msg" class="msg hidden"></p>
   </div>
 </div>
 

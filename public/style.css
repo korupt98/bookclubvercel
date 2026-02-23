@@ -91,6 +91,8 @@ header h1 { font-size:1.4rem; }
 .field label { display:block; font-size:.88rem; color:var(--muted); margin-bottom:.35rem; }
 .field input, .field select { width:100%; padding:.65rem .9rem; border:2px solid var(--border); border-radius:var(--radius); font:inherit; font-size:.93rem; transition:border-color .15s; background:var(--surface); }
 .field input:focus, .field select:focus { outline:none; border-color:var(--green); }
+.field textarea { width:100%; padding:.65rem .9rem; border:2px solid var(--border); border-radius:var(--radius); font:inherit; font-size:.93rem; transition:border-color .15s; background:var(--surface); resize:vertical; }
+.field textarea:focus { outline:none; border-color:var(--green); }
 .field input[type="date"] { font-family:inherit; }
 .two-col   { display:grid; grid-template-columns:1fr 1fr;      gap:1rem; }
 .three-col { display:grid; grid-template-columns:1fr 1fr 1fr;  gap:1rem; }

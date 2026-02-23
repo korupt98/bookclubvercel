@@ -75,6 +75,14 @@ function showLogin() {
   el('login-page').classList.remove('hidden');
   el('member-app').classList.add('hidden');
   el('admin-app').classList.add('hidden');
+  populateQuickClubs();
+}
+
+function populateQuickClubs() {
+  const sel = el('quick-club-select');
+  sel.innerHTML = '<option value="">— select club —</option>' +
+    (window._publicClubs || []).map(c =>
+      `<option value="${c.id}">${esc(c.name)}</option>`).join('');
 }
 
 async function fetchMe() {
@@ -100,6 +108,27 @@ el('login-back-btn').addEventListener('click', () => {
 el('login-btn').addEventListener('click', doLogin);
 el('login-password').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
 
+el('quick-club-select').addEventListener('change', async () => {
+  const clubId = parseInt(el('quick-club-select').value);
+  el('quick-member-field').classList.add('hidden');
+  el('quick-signin-btn').disabled = true;
+  el('quick-member-select').innerHTML = '<option value="">— select name —</option>';
+  if (!clubId) return;
+  try {
+    const members = await api(`/api/bookclubs/${clubId}/members/quick`);
+    el('quick-member-select').innerHTML =
+      '<option value="">— select name —</option>' +
+      members.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
+    el('quick-member-field').classList.remove('hidden');
+  } catch {}
+});
+
+el('quick-member-select').addEventListener('change', () => {
+  el('quick-signin-btn').disabled = !el('quick-member-select').value;
+});
+
+el('quick-signin-btn').addEventListener('click', doQuickLogin);
+
 async function doLogin() {
   const email    = el('login-email').value.trim();
   const password = el('login-password').value;
@@ -113,6 +142,23 @@ async function doLogin() {
     el('login-error').classList.add('hidden');
     await fetchMe();
   } catch (e) { showLoginError(e.message); }
+}
+
+async function doQuickLogin() {
+  const clubId = parseInt(el('quick-club-select').value);
+  const userId = parseInt(el('quick-member-select').value);
+  if (!clubId || !userId) return;
+  try {
+    const data  = await api('/api/auth/quick', 'POST', { user_id: userId, club_id: clubId });
+    authToken   = data.token;
+    currentUser = data.user;
+    allClubs    = data.user.bookclubs || [];
+    localStorage.setItem('bc_token', authToken);
+    el('quick-error').classList.add('hidden');
+    await fetchMe();
+  } catch (e) {
+    const p = el('quick-error'); p.textContent = e.message; p.classList.remove('hidden');
+  }
 }
 
 function showLoginError(msg) {
@@ -163,6 +209,7 @@ function isClubAdmin(clubId) {
 async function loadPublicHome() {
   try {
     const clubs = await api('/api/public/clubs');
+    window._publicClubs = clubs;
     const grid = el('public-clubs-grid');
     if (!clubs.length) { grid.innerHTML = `<p class="dim text-center">No book clubs yet.</p>`; return; }
     grid.innerHTML = clubs.map(c => {
@@ -260,6 +307,10 @@ function setupMemberListeners() {
   el('manage-create-user-btn').addEventListener('click', createMemberFromManage);
   el('manage-create-session-btn').addEventListener('click', manageCreateSession);
   el('manage-close-session-btn').addEventListener('click', manageCloseSession);
+
+  // Member edit modal
+  el('member-edit-save-btn').addEventListener('click', saveMemberEdit);
+  el('member-edit-cancel-btn').addEventListener('click', () => closeModal('member-edit-modal'));
 }
 
 async function loadMemberClub() {
@@ -296,7 +347,11 @@ function renderBooksTable() {
     else if (b.selected)      badge = `<span class="badge badge-selected">&#10003; Selected</span>`;
     else                      badge = `<span class="badge badge-active">Active</span>`;
     const actions = [`<button class="btn btn-ghost btn-xs" onclick="showBookDetails(${b.id})">Details</button>`];
-    if (canAdmin) actions.push(`<button class="btn btn-ghost btn-xs" onclick="memberOpenEditBook(${b.id})">Edit</button>`);
+    if (canAdmin) {
+      actions.push(`<button class="btn btn-ghost btn-xs" onclick="memberOpenEditBook(${b.id})">Edit</button>`);
+    } else if (isOwner) {
+      actions.push(`<button class="btn btn-ghost btn-xs" onclick="memberOpenOwnEdit(${b.id})">Edit</button>`);
+    }
     if (isOwner || canAdmin) actions.push(`<button class="btn btn-ghost btn-xs" onclick="memberToggleVoting(${b.id})">${b.active_for_voting ? 'Remove' : 'Restore'}</button>`);
     return `<tr class="${!b.active_for_voting ? 'inactive' : ''}">
       <td>${cover}</td>
@@ -326,6 +381,34 @@ async function memberOpenEditBook(id) {
   try { clubMembers = await api(`/api/bookclubs/${currentClubId}/members`); } catch {}
   _editClubId = currentClubId;
   openEditBook(id);
+}
+
+function memberOpenOwnEdit(id) {
+  const b = allBooks.find(x => x.id === id);
+  if (!b) return;
+  el('member-edit-book-id').value    = b.id;
+  el('member-edit-title').value      = b.title;
+  el('member-edit-author').value     = b.author || '';
+  el('member-edit-page-count').value = b.page_count || '';
+  el('member-edit-desc').value       = b.description || '';
+  el('member-edit-msg').classList.add('hidden');
+  openModal('member-edit-modal');
+}
+
+async function saveMemberEdit() {
+  const id = parseInt(el('member-edit-book-id').value);
+  try {
+    const updated = await api(`/api/bookclubs/${currentClubId}/books/${id}`, 'PATCH', {
+      title:       el('member-edit-title').value.trim(),
+      author:      el('member-edit-author').value.trim() || null,
+      page_count:  parseInt(el('member-edit-page-count').value) || null,
+      description: el('member-edit-desc').value.trim() || null,
+    });
+    const idx = allBooks.findIndex(x => x.id === id);
+    if (idx !== -1) allBooks[idx] = updated;
+    renderBooksTable();
+    closeModal('member-edit-modal');
+  } catch (e) { showMsg('member-edit-msg', e.message, 'error'); }
 }
 
 /* ── Add Book (member) ───────────────────────────────── */
