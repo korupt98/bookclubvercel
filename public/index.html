@@ -91,17 +91,30 @@
     <section id="tab-books" class="tab-pane active">
       <div class="section-head">
         <h2>All Books</h2>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="book-filter-text" placeholder="Search title or author…" autocomplete="off">
+        <select id="book-filter-genre">
+          <option value="">All genres</option>
+        </select>
         <label class="toggle-label">
-          <input type="checkbox" id="show-inactive"> Show removed books
+          <input type="checkbox" id="show-inactive"> Show removed
         </label>
       </div>
       <p id="books-loading" class="dim text-center mt-lg">Loading…</p>
       <div id="table-wrap" class="table-scroll hidden">
         <table id="books-table">
           <thead><tr>
-            <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th>
-            <th>Pages</th><th>Submitted By</th><th>Submitted</th>
-            <th>Status</th><th>Selected Date</th><th>Actions</th>
+            <th>Cover</th>
+            <th class="th-sort" data-sort="title">Title</th>
+            <th class="th-sort" data-sort="author">Author</th>
+            <th>Genre</th>
+            <th class="th-sort" data-sort="page_count">Pages</th>
+            <th>Submitted By</th>
+            <th class="th-sort th-sort-desc" data-sort="added_at">Date Added</th>
+            <th>Status</th>
+            <th>Selected Date</th>
+            <th>Actions</th>
           </tr></thead>
           <tbody id="books-tbody"></tbody>
         </table>

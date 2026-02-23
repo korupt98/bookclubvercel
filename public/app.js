@@ -16,6 +16,9 @@ let adminPickedBook  = null;
 let searchTimer      = null;
 let adminSearchTimer = null;
 let _memberSetup     = false;
+let sortField        = 'added_at';
+let sortDir          = 'desc';
+let _expandedClubs   = new Set();
 
 /* ── Boot ───────────────────────────────────────────────────────────────────── */
 async function init() {
@@ -210,28 +213,67 @@ async function loadPublicHome() {
   try {
     const clubs = await api('/api/public/clubs');
     window._publicClubs = clubs;
-    const grid = el('public-clubs-grid');
-    if (!clubs.length) { grid.innerHTML = `<p class="dim text-center">No book clubs yet.</p>`; return; }
-    grid.innerHTML = clubs.map(c => {
-      const bookItems = c.books.length
-        ? c.books.slice(0, 8).map(b => {
-            const cover = b.cover_url
-              ? `<img src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
-              : `<div class="pub-book-ph">&#128214;</div>`;
-            const badge = b.selected
-              ? `<span class="badge badge-selected">&#10003;</span>`
-              : b.active_for_voting ? '' : `<span class="badge badge-removed">Removed</span>`;
-            return `<div class="public-book-item">${cover}<div class="pub-book-info"><div class="pub-book-title">${esc(b.title)}</div><div class="pub-book-author">${esc(b.author || '')}</div>${badge}</div></div>`;
-          }).join('')
-        : `<p class="dim" style="font-size:.85rem;padding:.5rem 0">No books yet.</p>`;
-      return `<div class="public-club-card">
-        <h3>${esc(c.name)}</h3>
-        ${c.description ? `<p class="dim" style="font-size:.85rem;margin-bottom:.75rem">${esc(c.description)}</p>` : ''}
-        <div class="public-books-list">${bookItems}</div>
-      </div>`;
-    }).join('');
-  } catch { el('public-clubs-grid').innerHTML = `<p class="dim text-center">Unable to load clubs.</p>`; }
+    _expandedClubs = new Set();
+    renderPublicGrid();
+  } catch {
+    el('public-clubs-grid').innerHTML = `<p class="dim text-center">Unable to load clubs.</p>`;
+  }
 }
+
+function renderPublicGrid() {
+  const grid = el('public-clubs-grid');
+  if (!window._publicClubs?.length) {
+    grid.innerHTML = `<p class="dim text-center">No book clubs yet.</p>`;
+    return;
+  }
+  grid.innerHTML = window._publicClubs.map(c =>
+    renderPublicClubCard(c, _expandedClubs.has(c.id))
+  ).join('');
+}
+
+function renderPublicClubCard(c, expanded) {
+  const LIMIT   = 5;
+  const visible = expanded ? c.books : c.books.slice(0, LIMIT);
+  const hasMore = c.books.length > LIMIT;
+
+  const bookItems = visible.length
+    ? visible.map(b => {
+        const cover = b.cover_url
+          ? `<img src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
+          : `<div class="pub-book-ph">&#128214;</div>`;
+        const badge = b.selected
+          ? `<span class="badge badge-selected">&#10003;</span>`
+          : !b.active_for_voting ? `<span class="badge badge-removed">Removed</span>` : '';
+        const meta = [b.author, b.page_count ? `${Number(b.page_count).toLocaleString()} pages` : null]
+          .filter(Boolean).join(' · ');
+        return `<div class="public-book-item">
+          ${cover}
+          <div class="pub-book-info">
+            <div class="pub-book-title">${esc(b.title)}</div>
+            <div class="pub-book-author">${esc(meta)}</div>
+            ${badge ? `<div>${badge}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('')
+    : `<p class="dim" style="font-size:.85rem;padding:.5rem 0">No books yet.</p>`;
+
+  const expandBtn = !expanded && hasMore
+    ? `<button class="btn btn-ghost btn-sm pub-expand-btn" onclick="expandPublicClub(${c.id})">View all ${c.books.length} books →</button>`
+    : expanded && c.books.length > LIMIT
+      ? `<button class="btn btn-ghost btn-sm pub-expand-btn" onclick="collapsePublicClub(${c.id})">Show less ↑</button>`
+      : '';
+
+  return `<div class="public-club-card">
+    <h3>${esc(c.name)}</h3>
+    ${c.description ? `<p class="dim" style="font-size:.85rem;margin-bottom:.5rem">${esc(c.description)}</p>` : ''}
+    <p class="pub-book-count dim">${c.books.length} book${c.books.length !== 1 ? 's' : ''}</p>
+    <div class="public-books-list">${bookItems}</div>
+    ${expandBtn}
+  </div>`;
+}
+
+function expandPublicClub(clubId)   { _expandedClubs.add(clubId);    renderPublicGrid(); }
+function collapsePublicClub(clubId) { _expandedClubs.delete(clubId); renderPublicGrid(); }
 
 /* ══════════════════════════════════════════════════════════════════════════════
    MEMBER APP
@@ -311,6 +353,20 @@ function setupMemberListeners() {
   // Member edit modal
   el('member-edit-save-btn').addEventListener('click', saveMemberEdit);
   el('member-edit-cancel-btn').addEventListener('click', () => closeModal('member-edit-modal'));
+
+  // Filter controls
+  el('book-filter-text').addEventListener('input', renderBooksTable);
+  el('book-filter-genre').addEventListener('change', renderBooksTable);
+
+  // Sortable column headers (thead is static HTML, safe to wire once)
+  document.querySelectorAll('#books-table th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const f = th.dataset.sort;
+      if (sortField === f) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      else { sortField = f; sortDir = f === 'added_at' ? 'desc' : 'asc'; }
+      renderBooksTable();
+    });
+  });
 }
 
 async function loadMemberClub() {
@@ -320,15 +376,57 @@ async function loadMemberClub() {
   el('table-wrap').classList.add('hidden');
   try {
     allBooks = await api(`/api/bookclubs/${currentClubId}/books`);
+    populateGenreFilter();
     renderBooksTable();
   } finally { el('books-loading').classList.add('hidden'); }
   await refreshVoteTab();
 }
 
+function populateGenreFilter() {
+  const genres = [...new Set(
+    allBooks.map(b => b.genre?.split(',')[0]?.trim()).filter(Boolean)
+  )].sort();
+  const cur = el('book-filter-genre').value;
+  el('book-filter-genre').innerHTML =
+    '<option value="">All genres</option>' +
+    genres.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
+  if (cur) el('book-filter-genre').value = cur;
+}
+
 /* ── Book List (member) ──────────────────────────────── */
 function renderBooksTable() {
   const showInactive = el('show-inactive').checked;
-  const books = showInactive ? allBooks : allBooks.filter(b => b.active_for_voting);
+  const q     = (el('book-filter-text')?.value || '').trim().toLowerCase();
+  const genre = el('book-filter-genre')?.value  || '';
+
+  let books = showInactive ? allBooks : allBooks.filter(b => b.active_for_voting);
+  if (q)     books = books.filter(b =>
+    b.title?.toLowerCase().includes(q) || b.author?.toLowerCase().includes(q));
+  if (genre) books = books.filter(b =>
+    b.genre?.split(',')[0]?.trim().toLowerCase() === genre.toLowerCase());
+
+  // client-side sort
+  books = [...books].sort((a, b) => {
+    let va = a[sortField], vb = b[sortField];
+    if (sortField === 'added_at') {
+      va = va ? new Date(va).getTime() : 0;
+      vb = vb ? new Date(vb).getTime() : 0;
+    } else if (sortField === 'page_count') {
+      va = Number(va) || 0; vb = Number(vb) || 0;
+    } else {
+      va = (va || '').toLowerCase(); vb = (vb || '').toLowerCase();
+    }
+    return sortDir === 'asc' ? (va < vb ? -1 : va > vb ? 1 : 0)
+                             : (va > vb ? -1 : va < vb ? 1 : 0);
+  });
+
+  // update sort header indicators
+  document.querySelectorAll('#books-table th[data-sort]').forEach(th => {
+    th.classList.remove('th-sort-asc', 'th-sort-desc');
+    if (th.dataset.sort === sortField)
+      th.classList.add(sortDir === 'asc' ? 'th-sort-asc' : 'th-sort-desc');
+  });
+
   const tbody = el('books-tbody');
   const wrap  = el('table-wrap');
   const empty = el('no-books');
