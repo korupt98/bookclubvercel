@@ -455,7 +455,7 @@ app.get('/api/bookclubs/:clubId/voting/results/:sid', requireClubAccess, async (
     if (!session.is_closed && !isPrivileged) {
       return res.status(403).json({ error: 'Results hidden until voting closes' });
     }
-    res.json(await db.getResults(session.id));
+    res.json(await db.getResults(session.id, parseInt(req.params.clubId)));
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 

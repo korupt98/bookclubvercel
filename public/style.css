@@ -254,6 +254,15 @@ tr.inactive td { opacity:.55; }
 .role-badge-superadmin { background:#ede9fe; color:#5b21b6; }
 .role-badge-admin { background:#fef3c7; color:#92400e; }
 
+/* ── Voter tracking ──────────────────────────────────── */
+.voter-status { background:var(--bg); border-radius:var(--radius); padding:.65rem .85rem; margin-top:.5rem; }
+.voter-status-head { font-size:.8rem; font-weight:600; color:var(--muted); margin-bottom:.5rem; }
+.voter-count { font-weight:700; color:var(--text); }
+.voter-grid { display:flex; flex-wrap:wrap; gap:.3rem; }
+.voter-chip { display:inline-flex; align-items:center; padding:.18rem .55rem; border-radius:20px; font-size:.76rem; font-weight:500; white-space:nowrap; }
+.voter-chip-voted   { background:var(--success-bg); color:#166534; }
+.voter-chip-pending { background:var(--border-soft); color:var(--muted); }
+
 /* ── Responsive ──────────────────────────────────────── */
 @media (max-width:700px) {
   .two-col, .three-col, .admin-two-col { grid-template-columns:1fr; }

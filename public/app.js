@@ -15,6 +15,7 @@ let pickedBook       = null;
 let adminPickedBook  = null;
 let searchTimer      = null;
 let adminSearchTimer = null;
+let _memberSetup     = false;
 
 /* ── Boot ───────────────────────────────────────────────────────────────────── */
 async function init() {
@@ -80,8 +81,15 @@ async function fetchMe() {
   const me = await api('/api/auth/me');
   currentUser = me;
   allClubs = me.bookclubs || [];
-  if (me.role === 'superadmin') showAdmin();
-  else showMember();
+  if (me.role === 'superadmin' && !sessionStorage.getItem('bc_member_view')) {
+    showAdmin();
+  } else {
+    // Superadmin in member view: fetch all clubs (they may not be a member of any)
+    if (me.role === 'superadmin') {
+      allClubs = await api('/api/bookclubs').catch(() => allClubs);
+    }
+    showMember();
+  }
 }
 
 el('public-signin-btn').addEventListener('click', showLogin);
@@ -119,6 +127,29 @@ async function logout() {
 }
 el('member-logout-btn').addEventListener('click', logout);
 el('admin-logout-btn').addEventListener('click', logout);
+
+el('switch-to-member-btn').addEventListener('click', async () => {
+  sessionStorage.setItem('bc_member_view', '1');
+  el('admin-app').classList.add('hidden');
+  // Superadmin needs all clubs in member view
+  if (isSuperAdmin() && (!allClubs.length || !allClubs[0].club_role)) {
+    allClubs = await api('/api/bookclubs').catch(() => allClubs);
+  }
+  if (!_memberSetup) {
+    showMember();
+  } else {
+    el('member-app').classList.remove('hidden');
+    el('switch-to-admin-btn').classList.remove('hidden');
+    if (currentClubId) await loadMemberClub();
+    else if (allClubs.length) { currentClubId = allClubs[0].id; await loadMemberClub(); }
+  }
+});
+
+el('switch-to-admin-btn').addEventListener('click', () => {
+  sessionStorage.removeItem('bc_member_view');
+  el('member-app').classList.add('hidden');
+  el('admin-app').classList.remove('hidden');
+});
 
 /* ── Role helpers ───────────────────────────────────────────────────────────── */
 function isSuperAdmin() { return currentUser?.role === 'superadmin'; }
@@ -165,13 +196,19 @@ function showMember() {
   el('member-app').classList.remove('hidden');
   el('member-welcome').textContent = `Welcome, ${currentUser.name}`;
 
-  // Show Manage tab only for club admins
-  const hasAdminClub = allClubs.some(c => c.club_role === 'admin');
+  // Show Manage tab for club admins and superadmins
+  const hasAdminClub = isSuperAdmin() || allClubs.some(c => c.club_role === 'admin');
   el('manage-tab-btn').classList.toggle('hidden', !hasAdminClub);
 
-  setupMemberTabs();
-  setupMemberClubSwitcher();
-  setupMemberListeners();
+  // Show Admin View button only for superadmins
+  el('switch-to-admin-btn').classList.toggle('hidden', !isSuperAdmin());
+
+  if (!_memberSetup) {
+    _memberSetup = true;
+    setupMemberTabs();
+    setupMemberListeners();
+  }
+  setupMemberClubSwitcher(); // refresh club list each time (safe: uses onchange)
   if (allClubs.length) {
     currentClubId = allClubs[0].id;
     loadMemberClub();
@@ -184,7 +221,7 @@ function setupMemberClubSwitcher() {
   const sel  = el('club-switcher');
   wrap.classList.remove('hidden');
   sel.innerHTML = allClubs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-  sel.addEventListener('change', () => { currentClubId = parseInt(sel.value); loadMemberClub(); });
+  sel.onchange = () => { currentClubId = parseInt(sel.value); loadMemberClub(); };
 }
 
 function setupMemberTabs() {
@@ -550,7 +587,7 @@ async function loadManageResults() {
   if (!manageVotingSession) return;
   try {
     const data = await api(`/api/bookclubs/${currentClubId}/voting/results/${manageVotingSession.id}`);
-    renderResults(data, el('manage-results-list'), el('manage-results-footer'));
+    renderResults(data, el('manage-results-list'), el('manage-results-footer'), el('manage-voter-status'));
   } catch {}
 }
 
@@ -595,6 +632,7 @@ function showBookDetails(bookId) {
    ADMIN APP (Superadmin)
 ══════════════════════════════════════════════════════════════════════════════ */
 function showAdmin() {
+  sessionStorage.removeItem('bc_member_view');
   el('public-home').classList.add('hidden');
   el('login-page').classList.add('hidden');
   el('member-app').classList.add('hidden');
@@ -629,11 +667,11 @@ function populateAdminClubSelect() {
     ? allClubs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')
     : `<option value="">No clubs yet</option>`;
   if (allClubs.length) adminClubId = allClubs[0].id;
-  sel.addEventListener('change', () => {
+  sel.onchange = () => {
     adminClubId = parseInt(sel.value);
     const active = document.querySelector('[data-admin-tab].active');
     if (active) active.click();
-  });
+  };
 }
 
 function setupAdminListeners() {
@@ -1008,7 +1046,7 @@ async function loadAdminResults() {
   if (!votingSession) return;
   try {
     const data = await api(`/api/bookclubs/${adminClubId}/voting/results/${votingSession.id}`);
-    renderResults(data, el('admin-results-list'), el('admin-results-footer'));
+    renderResults(data, el('admin-results-list'), el('admin-results-footer'), el('admin-voter-status'));
   } catch {}
 }
 
@@ -1122,24 +1160,43 @@ function renderAnalytics(d) {
 }
 
 /* ── Shared helpers ──────────────────────────────────── */
-function renderResults(data, listEl, footerEl) {
-  const { results, total_voters } = data;
-  if (!results?.length) { listEl.innerHTML = `<p class="dim">No votes yet.</p>`; return; }
-  const max = results[0].vote_count || 1;
-  listEl.innerHTML = results.map((b, i) => {
-    const img = b.cover_url
-      ? `<img src="${b.cover_url}" alt="" onerror="this.outerHTML='<div class=rr-ph>&#128214;</div>'">`
-      : `<div class="rr-ph">&#128214;</div>`;
-    return `<div class="result-row">
-      ${img}<div class="rr-info">
-        <div class="rr-title">${esc(b.title)}${i === 0 ? ' &#127942;' : ''}</div>
-        <div class="rr-author">${esc(b.author || '')}</div>
-      </div>
-      <div class="rr-bar-wrap"><div class="rr-bar" style="width:${Math.round(b.vote_count/max*100)}%"></div></div>
-      <div class="rr-count">${b.vote_count}</div>
-    </div>`;
-  }).join('');
-  if (footerEl) footerEl.textContent = `Total voters: ${total_voters}`;
+function renderResults(data, listEl, footerEl, voterEl) {
+  const { results, total_voters, voter_status } = data;
+  if (!results?.length) {
+    listEl.innerHTML = `<p class="dim">No votes yet.</p>`;
+    if (footerEl) footerEl.textContent = '';
+  } else {
+    const max = results[0].vote_count || 1;
+    listEl.innerHTML = results.map((b, i) => {
+      const img = b.cover_url
+        ? `<img src="${b.cover_url}" alt="" onerror="this.outerHTML='<div class=rr-ph>&#128214;</div>'">`
+        : `<div class="rr-ph">&#128214;</div>`;
+      return `<div class="result-row">
+        ${img}<div class="rr-info">
+          <div class="rr-title">${esc(b.title)}${i === 0 ? ' &#127942;' : ''}</div>
+          <div class="rr-author">${esc(b.author || '')}</div>
+        </div>
+        <div class="rr-bar-wrap"><div class="rr-bar" style="width:${Math.round(b.vote_count/max*100)}%"></div></div>
+        <div class="rr-count">${b.vote_count}</div>
+      </div>`;
+    }).join('');
+    if (footerEl) footerEl.textContent = `Total voters: ${total_voters}`;
+  }
+  if (voterEl) renderVoterStatus(voter_status, voterEl);
+}
+
+function renderVoterStatus(voter_status, voterEl) {
+  if (!voter_status?.length) { voterEl.classList.add('hidden'); return; }
+  const voted = voter_status.filter(m => m.voted).length;
+  voterEl.classList.remove('hidden');
+  voterEl.innerHTML = `<div class="voter-status">
+    <div class="voter-status-head">Who voted <span class="voter-count">${voted} / ${voter_status.length}</span></div>
+    <div class="voter-grid">
+      ${voter_status.map(m =>
+        `<div class="voter-chip ${m.voted ? 'voter-chip-voted' : 'voter-chip-pending'}">${esc(m.name)}</div>`
+      ).join('')}
+    </div>
+  </div>`;
 }
 
 /* ── Utility ─────────────────────────────────────────── */
