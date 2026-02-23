@@ -390,6 +390,35 @@ async function getResults(sessionId, clubId = null) {
   return { results, total_voters: Number(voterRows[0]?.cnt || 0), voter_status };
 }
 
+async function getAllSessions(clubId) {
+  const { rows } = await pool.query(
+    `SELECT vs.*, COUNT(DISTINCT v.voter_user_id) AS voter_count
+     FROM voting_sessions vs
+     LEFT JOIN votes v ON v.session_id = vs.id
+     WHERE vs.bookclub_id = $1
+     GROUP BY vs.id ORDER BY vs.created_at DESC`,
+    [clubId]
+  );
+  return rows.map(s => ({ ...s, voter_count: Number(s.voter_count) }));
+}
+
+async function getSessionVoteDetails(sessionId) {
+  const { rows } = await pool.query(
+    `SELECT v.voter_name, b1.title AS book1_title, b2.title AS book2_title
+     FROM votes v
+     JOIN books b1 ON b1.id = v.book_id_1
+     JOIN books b2 ON b2.id = v.book_id_2
+     WHERE v.session_id = $1 ORDER BY v.voter_name`,
+    [sessionId]
+  );
+  return rows;
+}
+
+async function deleteVotingSession(sessionId) {
+  await pool.query('DELETE FROM votes WHERE session_id = $1', [sessionId]);
+  await pool.query('DELETE FROM voting_sessions WHERE id = $1', [sessionId]);
+}
+
 /* ── Analytics ──────────────────────────────────────────────────────────────── */
 async function getAnalytics(clubId, from, to) {
   let query = 'SELECT * FROM books WHERE bookclub_id = $1';
@@ -469,6 +498,7 @@ module.exports = {
   // voting
   getLatestSession, getOpenSession, insertSession, closeSession, getVotingSession,
   hasVoted, insertVote, getResults,
+  getAllSessions, getSessionVoteDetails, deleteVotingSession,
   // analytics
   getAnalytics,
 };
