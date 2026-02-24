@@ -515,6 +515,7 @@ function memberOpenOwnEdit(id) {
   el('member-edit-book-id').value    = b.id;
   el('member-edit-title').value      = b.title;
   el('member-edit-author').value     = b.author || '';
+  el('member-edit-genre').value      = b.genre  || '';
   el('member-edit-page-count').value = b.page_count || '';
   el('member-edit-desc').value       = b.description || '';
   el('member-edit-msg').classList.add('hidden');
@@ -527,6 +528,7 @@ async function saveMemberEdit() {
     const updated = await api(`/api/bookclubs/${currentClubId}/books/${id}`, 'PATCH', {
       title:       el('member-edit-title').value.trim(),
       author:      el('member-edit-author').value.trim() || null,
+      genre:       el('member-edit-genre').value.trim()  || null,
       page_count:  parseInt(el('member-edit-page-count').value) || null,
       description: el('member-edit-desc').value.trim() || null,
     });
@@ -561,9 +563,11 @@ async function doSearch(q, dropdownId, onSelect) {
 async function pickBook(i) {
   pickedBook = window._searchResults[i];
   hideDropdown('search-dropdown');
-  el('book-search').value = '';
-  el('book-title').value  = pickedBook.title;
-  el('book-author').value = pickedBook.author;
+  el('book-search').value       = '';
+  el('book-title').value        = pickedBook.title;
+  el('book-author').value       = pickedBook.author;
+  el('book-genre').value        = pickedBook.genre || '';
+  el('book-description').value  = '';
   el('preview-title').textContent  = pickedBook.title;
   el('preview-author').textContent = pickedBook.author;
   el('preview-pages').textContent  = pickedBook.page_count ? `${pickedBook.page_count} pages` : '';
@@ -579,19 +583,25 @@ async function pickBook(i) {
       if (info.genre && !pickedBook.genre) pickedBook.genre = info.genre;
       el('preview-desc').textContent  = info.description || '';
       el('preview-genre').textContent = pickedBook.genre ? `Genre: ${pickedBook.genre}` : '';
+      el('book-genre').value          = pickedBook.genre || '';
+      el('book-description').value    = info.description || '';
     } catch { el('preview-desc').textContent = ''; }
   } else { el('preview-desc').textContent = ''; }
 }
 
 function clearPick() {
   pickedBook = null;
-  el('book-title').value = ''; el('book-author').value = ''; el('book-search').value = '';
+  el('book-title').value = ''; el('book-author').value = '';
+  el('book-genre').value = ''; el('book-description').value = '';
+  el('book-search').value = '';
   el('book-preview').classList.add('hidden');
 }
 
 async function addBook() {
-  const title  = el('book-title').value.trim();
-  const author = el('book-author').value.trim();
+  const title       = el('book-title').value.trim();
+  const author      = el('book-author').value.trim();
+  const genre       = el('book-genre').value.trim();
+  const description = el('book-description').value.trim();
   if (!title) return showAddMsg('Please enter a book title.', 'error');
   try {
     const book = await api(`/api/bookclubs/${currentClubId}/books`, 'POST', {
@@ -599,8 +609,8 @@ async function addBook() {
       cover_url:       pickedBook?.cover_url       || null,
       open_library_id: pickedBook?.open_library_id || null,
       page_count:      pickedBook?.page_count      || null,
-      description:     pickedBook?.description     || null,
-      genre:           pickedBook?.genre           || null,
+      description:     description || null,
+      genre:           genre || null,
     });
     showAddMsg('Book added!', 'success');
     clearPick();
@@ -1269,14 +1279,16 @@ async function adminToggleVoting(id) {
 async function adminPickBook(i) {
   adminPickedBook = window._searchResults[i];
   hideDropdown('admin-search-dropdown');
-  el('admin-book-search').value  = '';
-  el('admin-book-title').value   = adminPickedBook.title;
-  el('admin-book-author').value  = adminPickedBook.author;
-  el('admin-book-genre').value   = adminPickedBook.genre || '';
+  el('admin-book-search').value       = '';
+  el('admin-book-title').value        = adminPickedBook.title;
+  el('admin-book-author').value       = adminPickedBook.author;
+  el('admin-book-genre').value        = adminPickedBook.genre || '';
+  el('admin-book-description').value  = '';
   el('admin-preview-title').textContent  = adminPickedBook.title;
   el('admin-preview-author').textContent = adminPickedBook.author;
   el('admin-preview-pages').textContent  = adminPickedBook.page_count ? `${adminPickedBook.page_count} pages` : '';
   el('admin-preview-genre').textContent  = adminPickedBook.genre ? `Genre: ${adminPickedBook.genre}` : '';
+  el('admin-preview-desc').textContent   = '';
   const img = el('admin-preview-img');
   img.src = adminPickedBook.cover_url || ''; img.style.display = adminPickedBook.cover_url ? 'block' : 'none';
   el('admin-book-preview').classList.remove('hidden');
@@ -1286,16 +1298,18 @@ async function adminPickBook(i) {
       adminPickedBook.description = info.description || null;
       if (info.genre && !adminPickedBook.genre) {
         adminPickedBook.genre = info.genre;
-        el('admin-book-genre').value  = info.genre;
+        el('admin-book-genre').value          = info.genre;
         el('admin-preview-genre').textContent = `Genre: ${info.genre}`;
       }
+      el('admin-preview-desc').textContent  = info.description || '';
+      el('admin-book-description').value    = info.description || '';
     } catch {}
   }
 }
 
 function adminClearPick() {
   adminPickedBook = null;
-  ['admin-book-title','admin-book-author','admin-book-genre','admin-book-search'].forEach(id => el(id).value = '');
+  ['admin-book-title','admin-book-author','admin-book-genre','admin-book-description','admin-book-search'].forEach(id => el(id).value = '');
   el('admin-book-preview').classList.add('hidden');
 }
 
@@ -1303,6 +1317,7 @@ async function adminAddBook() {
   const title        = el('admin-book-title').value.trim();
   const author       = el('admin-book-author').value.trim();
   const genre        = el('admin-book-genre').value.trim();
+  const description  = el('admin-book-description').value.trim();
   const submitterSel = el('admin-book-submitter');
   const submitterId  = parseInt(submitterSel.value) || null;
   const submitterName= submitterId ? submitterSel.selectedOptions[0]?.dataset.name : null;
@@ -1315,7 +1330,7 @@ async function adminAddBook() {
       cover_url:       adminPickedBook?.cover_url       || null,
       open_library_id: adminPickedBook?.open_library_id || null,
       page_count:      adminPickedBook?.page_count      || null,
-      description:     adminPickedBook?.description     || null,
+      description:     description || null,
       added_by_name:    submitterName,
       added_by_user_id: submitterId,
       submitted_at: submittedAt ? new Date(submittedAt).toISOString() : null,
@@ -1341,6 +1356,7 @@ function openEditBook(id) {
   el('edit-submitted-at').value   = b.submitted_at ? b.submitted_at.slice(0,10) : '';
   el('edit-selected-at').value    = b.selected_at  ? b.selected_at.slice(0,10)  : '';
   el('edit-page-count').value     = b.page_count || '';
+  el('edit-description').value    = b.description || '';
   populateSubmitterSelect('edit-submitter');
   if (b.added_by_user_id) el('edit-submitter').value = b.added_by_user_id;
   openModal('edit-book-modal');
@@ -1359,6 +1375,7 @@ async function saveEditBook() {
       author:           el('edit-author').value.trim() || null,
       genre:            el('edit-genre').value.trim()  || null,
       page_count:       parseInt(el('edit-page-count').value) || null,
+      description:      el('edit-description').value.trim() || null,
       submitted_at:     el('edit-submitted-at').value ? new Date(el('edit-submitted-at').value).toISOString() : null,
       selected:         !!selectedAt,
       selected_at:      selectedAt ? new Date(selectedAt).toISOString() : null,

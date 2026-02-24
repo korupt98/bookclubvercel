@@ -15,13 +15,10 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Genre extraction ──────────────────────────────────────────────────────────
-const GENRE_EXCLUDE = /^(accessible|protected|in library|large type|daisy|nook|overdrive|ebook|kindle|ipad|epub)/i;
+const GENRE_EXCLUDE = /^(accessible|protected|in library|large type|daisy|nook|overdrive|ebook|kindle|ipad|epub|audio|illustrated|print)/i;
 function extractGenre(subjects) {
   if (!subjects?.length) return null;
-  const cleaned = subjects
-    .filter(s => typeof s === 'string' && s.length < 40 && !GENRE_EXCLUDE.test(s))
-    .slice(0, 3);
-  return cleaned.length ? cleaned.join(', ') : null;
+  return subjects.find(s => typeof s === 'string' && s.length < 35 && !GENRE_EXCLUDE.test(s)) || null;
 }
 
 // ── Auth middleware ───────────────────────────────────────────────────────────
@@ -402,7 +399,7 @@ app.patch('/api/bookclubs/:clubId/books/:id', requireClubAccess, async (req, res
       return res.status(403).json({ error: 'You can only edit your own books' });
     const adminFields  = ['title','author','genre','page_count','description','submitted_at',
                           'selected','selected_at','added_by_name','added_by_user_id','active_for_voting'];
-    const memberFields = ['title','author','page_count','description'];
+    const memberFields = ['title','author','genre','page_count','description'];
     const allowed = isPrivileged ? adminFields : memberFields;
     const fields = {};
     for (const k of allowed) { if (req.body[k] !== undefined) fields[k] = req.body[k]; }
