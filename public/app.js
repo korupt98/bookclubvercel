@@ -518,6 +518,9 @@ function memberOpenOwnEdit(id) {
   el('member-edit-genre').value      = b.genre  || '';
   el('member-edit-page-count').value = b.page_count || '';
   el('member-edit-desc').value       = b.description || '';
+  const memVotingCb = el('member-edit-active-voting');
+  memVotingCb.checked  = !!b.active_for_voting;
+  memVotingCb.disabled = !!b.selected;
   el('member-edit-msg').classList.add('hidden');
   openModal('member-edit-modal');
 }
@@ -528,9 +531,10 @@ async function saveMemberEdit() {
     const updated = await api(`/api/bookclubs/${currentClubId}/books/${id}`, 'PATCH', {
       title:       el('member-edit-title').value.trim(),
       author:      el('member-edit-author').value.trim() || null,
-      genre:       el('member-edit-genre').value.trim()  || null,
-      page_count:  parseInt(el('member-edit-page-count').value) || null,
-      description: el('member-edit-desc').value.trim() || null,
+      genre:             el('member-edit-genre').value.trim()  || null,
+      page_count:        parseInt(el('member-edit-page-count').value) || null,
+      description:       el('member-edit-desc').value.trim() || null,
+      active_for_voting: el('member-edit-active-voting').checked,
     });
     const idx = allBooks.findIndex(x => x.id === id);
     if (idx !== -1) allBooks[idx] = updated;
@@ -1357,6 +1361,9 @@ function openEditBook(id) {
   el('edit-selected-at').value    = b.selected_at  ? b.selected_at.slice(0,10)  : '';
   el('edit-page-count').value     = b.page_count || '';
   el('edit-description').value    = b.description || '';
+  const editVotingCb = el('edit-active-voting');
+  editVotingCb.checked  = !!b.active_for_voting;
+  editVotingCb.disabled = !!b.selected;
   populateSubmitterSelect('edit-submitter');
   if (b.added_by_user_id) el('edit-submitter').value = b.added_by_user_id;
   openModal('edit-book-modal');
@@ -1376,6 +1383,7 @@ async function saveEditBook() {
       genre:            el('edit-genre').value.trim()  || null,
       page_count:       parseInt(el('edit-page-count').value) || null,
       description:      el('edit-description').value.trim() || null,
+      active_for_voting: el('edit-active-voting').checked,
       submitted_at:     el('edit-submitted-at').value ? new Date(el('edit-submitted-at').value).toISOString() : null,
       selected:         !!selectedAt,
       selected_at:      selectedAt ? new Date(selectedAt).toISOString() : null,
