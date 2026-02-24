@@ -424,6 +424,23 @@ app.patch('/api/bookclubs/:clubId/books/:id/toggle-voting', requireClubAccess, a
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
+app.patch('/api/bookclubs/:clubId/books/:id/archive', requireClubAccess, async (req, res) => {
+  const clubId = parseInt(req.params.clubId);
+  const bookId = parseInt(req.params.id);
+  const { archived } = req.body;
+  try {
+    const book = await db.getBook(bookId);
+    if (!book || book.bookclub_id !== clubId) return res.status(404).json({ error: 'Not found' });
+    if (archived && book.selected)
+      return res.status(400).json({ error: 'Cannot archive a book that has been selected' });
+    const clubRole     = await db.getClubRole(req.user.id, clubId);
+    const isPrivileged = req.user.role === 'superadmin' || clubRole === 'admin';
+    if (!isPrivileged && book.added_by_user_id !== req.user.id)
+      return res.status(403).json({ error: 'You can only archive your own books' });
+    res.json(await db.updateBook(bookId, { archived: !!archived }));
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
 app.delete('/api/bookclubs/:clubId/books/:id', requireClubAdmin, async (req, res) => {
   try {
     await db.deleteBook(parseInt(req.params.id));

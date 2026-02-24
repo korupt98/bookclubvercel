@@ -423,7 +423,7 @@ function renderBooksTable() {
   const q     = (el('book-filter-text')?.value || '').trim().toLowerCase();
   const genre = el('book-filter-genre')?.value  || '';
 
-  let books = showInactive ? allBooks : allBooks.filter(b => b.active_for_voting);
+  let books = showInactive ? allBooks : allBooks.filter(b => !b.archived);
   if (q)     books = books.filter(b =>
     b.title?.toLowerCase().includes(q) || b.author?.toLowerCase().includes(q));
   if (genre) books = books.filter(b =>
@@ -465,12 +465,12 @@ function renderBooksTable() {
       ? `<img class="thumb" src="${b.cover_url}" alt="" onerror="this.outerHTML='<div class=thumb-ph>&#128214;</div>'">`
       : `<div class="thumb-ph">&#128214;</div>`;
     let badge;
-    if (!b.active_for_voting) badge = `<span class="badge badge-removed">Removed</span>`;
-    else if (b.selected)      badge = `<span class="badge badge-selected">&#10003; Selected</span>`;
-    else                      badge = `<span class="badge badge-active">Active</span>`;
-    const canToggleVoting = (isOwner || canAdmin) && !b.selected;
+    if (b.archived)      badge = `<span class="badge badge-removed">Archived</span>`;
+    else if (b.selected) badge = `<span class="badge badge-selected">&#10003; Selected</span>`;
+    else                 badge = `<span class="badge badge-active">Active</span>`;
+    const canToggleVoting = (canAdmin || (isOwner && !b.selected)) && !b.archived;
     const votingCell = `<input type="checkbox" class="voting-cb" ${b.active_for_voting ? 'checked' : ''} ${canToggleVoting ? '' : 'disabled'}
-      title="${b.selected ? 'Already selected' : canToggleVoting ? 'Toggle voting eligibility' : 'Not your book'}"
+      title="${b.archived ? 'Book is archived' : canToggleVoting ? 'Toggle voting eligibility' : 'Not your book'}"
       onchange="memberToggleVoting(${b.id})">`;
     const actions = [`<button class="btn btn-ghost btn-xs" onclick="showBookDetails(${b.id})">Details</button>`];
     if (canAdmin) {
@@ -478,7 +478,12 @@ function renderBooksTable() {
     } else if (isOwner) {
       actions.push(`<button class="btn btn-ghost btn-xs" onclick="memberOpenOwnEdit(${b.id})">Edit</button>`);
     }
-    return `<tr class="${!b.active_for_voting ? 'inactive' : ''}">
+    if ((isOwner || canAdmin) && !b.selected) {
+      actions.push(b.archived
+        ? `<button class="btn btn-ghost btn-xs" onclick="memberArchiveBook(${b.id},false)">Unarchive</button>`
+        : `<button class="btn btn-ghost btn-xs" onclick="memberArchiveBook(${b.id},true)">Archive</button>`);
+    }
+    return `<tr class="${b.archived ? 'inactive' : ''}">
       <td>${cover}</td>
       <td><strong>${esc(b.title)}</strong></td>
       <td>${esc(b.author || '—')}</td>
@@ -497,6 +502,15 @@ function renderBooksTable() {
 async function memberToggleVoting(id) {
   try {
     const updated = await api(`/api/bookclubs/${currentClubId}/books/${id}/toggle-voting`, 'PATCH', {});
+    const idx = allBooks.findIndex(b => b.id === id);
+    if (idx !== -1) allBooks[idx] = updated;
+    renderBooksTable();
+  } catch (e) { alert(e.message); }
+}
+
+async function memberArchiveBook(id, archive) {
+  try {
+    const updated = await api(`/api/bookclubs/${currentClubId}/books/${id}/archive`, 'PATCH', { archived: archive });
     const idx = allBooks.findIndex(b => b.id === id);
     if (idx !== -1) allBooks[idx] = updated;
     renderBooksTable();
@@ -1245,13 +1259,21 @@ function renderAdminBooksTable() {
     const cover = b.cover_url
       ? `<img class="thumb" src="${b.cover_url}" alt="" onerror="this.outerHTML='<div class=thumb-ph>&#128214;</div>'">`
       : `<div class="thumb-ph">&#128214;</div>`;
-    const selectedBadge = b.selected
-      ? `<span class="badge badge-selected">&#10003;</span>`
-      : `<span class="badge badge-active">No</span>`;
-    const votingCb = `<input type="checkbox" class="voting-cb" ${b.active_for_voting ? 'checked' : ''} ${b.selected ? 'disabled' : ''}
-      title="${b.selected ? 'Already selected' : 'Toggle voting eligibility'}"
+    const selectedBadge = b.archived
+      ? `<span class="badge badge-removed">Archived</span>`
+      : b.selected
+        ? `<span class="badge badge-selected">&#10003;</span>`
+        : `<span class="badge badge-active">No</span>`;
+    const canToggleVoting = !b.archived;
+    const votingCb = `<input type="checkbox" class="voting-cb" ${b.active_for_voting ? 'checked' : ''} ${canToggleVoting ? '' : 'disabled'}
+      title="${b.archived ? 'Book is archived' : 'Toggle voting eligibility'}"
       onchange="adminToggleVoting(${b.id})">`;
-    return `<tr>
+    const archiveBtn = !b.selected
+      ? (b.archived
+          ? `<button class="btn btn-ghost btn-xs" onclick="adminArchiveBook(${b.id},false)">Unarchive</button>`
+          : `<button class="btn btn-ghost btn-xs" onclick="adminArchiveBook(${b.id},true)">Archive</button>`)
+      : '';
+    return `<tr class="${b.archived ? 'inactive' : ''}">
       <td>${cover}</td>
       <td><strong>${esc(b.title)}</strong></td>
       <td>${esc(b.author || '—')}</td>
@@ -1265,6 +1287,7 @@ function renderAdminBooksTable() {
       <td><div class="action-group">
         <button class="btn btn-ghost btn-xs" onclick="openEditBook(${b.id})">Edit</button>
         <button class="btn btn-ghost btn-xs" onclick="showAdminBookDetails(${b.id})">Details</button>
+        ${archiveBtn}
         <button class="btn btn-danger btn-xs" onclick="adminDeleteBook(${b.id})">Delete</button>
       </div></td>
     </tr>`;
@@ -1274,6 +1297,15 @@ function renderAdminBooksTable() {
 async function adminToggleVoting(id) {
   try {
     const updated = await api(`/api/bookclubs/${adminClubId}/books/${id}/toggle-voting`, 'PATCH', {});
+    const idx = allBooks.findIndex(b => b.id === id);
+    if (idx !== -1) allBooks[idx] = updated;
+    renderAdminBooksTable();
+  } catch (e) { alert(e.message); }
+}
+
+async function adminArchiveBook(id, archive) {
+  try {
+    const updated = await api(`/api/bookclubs/${adminClubId}/books/${id}/archive`, 'PATCH', { archived: archive });
     const idx = allBooks.findIndex(b => b.id === id);
     if (idx !== -1) allBooks[idx] = updated;
     renderAdminBooksTable();
@@ -1363,7 +1395,7 @@ function openEditBook(id) {
   el('edit-description').value    = b.description || '';
   const editVotingCb = el('edit-active-voting');
   editVotingCb.checked  = !!b.active_for_voting;
-  editVotingCb.disabled = !!b.selected;
+  editVotingCb.disabled = !!b.archived;
   populateSubmitterSelect('edit-submitter');
   if (b.added_by_user_id) el('edit-submitter').value = b.added_by_user_id;
   openModal('edit-book-modal');
