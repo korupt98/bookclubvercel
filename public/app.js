@@ -433,8 +433,8 @@ function renderBooksTable() {
   books = [...books].sort((a, b) => {
     let va = a[sortField], vb = b[sortField];
     if (sortField === 'added_at') {
-      va = va ? new Date(va).getTime() : 0;
-      vb = vb ? new Date(vb).getTime() : 0;
+      va = new Date(a.submitted_at || a.added_at).getTime();
+      vb = new Date(b.submitted_at || b.added_at).getTime();
     } else if (sortField === 'page_count') {
       va = Number(va) || 0; vb = Number(vb) || 0;
     } else {

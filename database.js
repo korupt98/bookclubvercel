@@ -224,7 +224,7 @@ async function setClubRole(userId, clubId, role) {
 /* ── Books ──────────────────────────────────────────────────────────────────── */
 async function getBooks(clubId) {
   const { rows } = await pool.query(
-    'SELECT * FROM books WHERE bookclub_id = $1 ORDER BY added_at DESC',
+    'SELECT * FROM books WHERE bookclub_id = $1 ORDER BY COALESCE(submitted_at, added_at) DESC',
     [clubId]
   );
   return rows;
@@ -274,7 +274,7 @@ async function insertBook(fields) {
 async function updateBook(id, fields) {
   const allowed = [
     'title','author','genre','page_count','description','submitted_at',
-    'selected','selected_at','added_by_name','added_by_user_id','active_for_voting',
+    'selected','selected_at','added_by_name','added_by_user_id','active_for_voting','archived',
   ];
   const filtered = {};
   for (const k of allowed) {
@@ -301,7 +301,7 @@ async function getPublicClubsWithBooks() {
   for (const club of clubs) {
     const { rows: books } = await pool.query(
       `SELECT id, title, author, genre, cover_url, page_count, selected, active_for_voting
-       FROM books WHERE bookclub_id = $1 ORDER BY added_at DESC`,
+       FROM books WHERE bookclub_id = $1 AND archived = FALSE ORDER BY COALESCE(submitted_at, added_at) DESC`,
       [club.id]
     );
     result.push({ ...club, books });

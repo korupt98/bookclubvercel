@@ -72,6 +72,9 @@ CREATE TABLE IF NOT EXISTS votes (
 -- Allow email to be optional (users who sign in via Google only)
 ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
 
+-- Book archiving
+ALTER TABLE books ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT FALSE;
+
 -- Configurable voting sessions
 ALTER TABLE voting_sessions ADD COLUMN IF NOT EXISTS votes_per_member INT NOT NULL DEFAULT 2;
 
