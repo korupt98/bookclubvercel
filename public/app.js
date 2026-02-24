@@ -668,8 +668,8 @@ async function renderVoteTab() {
   el('vote-pick-max').textContent   = picks;
   const sessionBookIds = votingSession.session_book_ids || [];
   const eligibleBooks = sessionBookIds.length
-    ? allBooks.filter(b => sessionBookIds.includes(b.id) && b.active_for_voting && !b.selected)
-    : allBooks.filter(b => b.active_for_voting && !b.selected);
+    ? allBooks.filter(b => sessionBookIds.includes(b.id) && !b.archived)
+    : allBooks.filter(b => b.active_for_voting && !b.selected && !b.archived);
   const myBooks = eligibleBooks.filter(b => b.added_by_user_id === currentUser.id);
   if (!myBooks.length) {
     el('vote-no-books').classList.remove('hidden');
@@ -686,8 +686,8 @@ async function renderVoteTab() {
 function renderVoteGrid() {
   const sessionBookIds = votingSession?.session_book_ids || [];
   const active = sessionBookIds.length
-    ? allBooks.filter(b => sessionBookIds.includes(b.id) && b.active_for_voting && !b.selected)
-    : allBooks.filter(b => b.active_for_voting && !b.selected);
+    ? allBooks.filter(b => sessionBookIds.includes(b.id) && !b.archived)
+    : allBooks.filter(b => b.active_for_voting && !b.selected && !b.archived);
   const grid = el('vote-grid');
   if (!active.length) { grid.innerHTML = `<p class="dim">No books available for voting.</p>`; return; }
   grid.innerHTML = active.map(b => {
@@ -858,7 +858,7 @@ async function showStartSessionForm(ctx, clubId) {
   panel.classList.remove('hidden');
   try {
     const books = (await api(`/api/bookclubs/${clubId}/books`))
-      .filter(b => b.active_for_voting && !b.selected);
+      .filter(b => b.active_for_voting && !b.archived);
     if (!books.length) {
       panel.innerHTML = '<p class="dim">No eligible books to include in the ballot.</p>'; return;
     }
