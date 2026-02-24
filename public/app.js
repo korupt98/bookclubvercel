@@ -1237,7 +1237,7 @@ function renderAdminBooksTable() {
     const votingCb = `<input type="checkbox" class="voting-cb" ${b.active_for_voting ? 'checked' : ''} ${b.selected ? 'disabled' : ''}
       title="${b.selected ? 'Already selected' : 'Toggle voting eligibility'}"
       onchange="adminToggleVoting(${b.id})">`;
-    return `<tr class="${!b.active_for_voting ? 'inactive' : ''}">
+    return `<tr>
       <td>${cover}</td>
       <td><strong>${esc(b.title)}</strong></td>
       <td>${esc(b.author || '—')}</td>
