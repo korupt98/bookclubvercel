@@ -2,16 +2,22 @@
 require('dotenv').config();
 const express = require('express');
 const path    = require('path');
-const fs      = require('fs');
 const db      = require('./database');
 const { hashPassword, verifyPassword, generateToken, generateTempPassword, verifyGoogleToken } = require('./auth');
 const { sendInviteEmail } = require('./email');
 const multer = require('multer');
 const sharp  = require('sharp');
 const { randomBytes } = require('crypto');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 
-const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads', 'covers');
-if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+const r2 = new S3Client({
+  region: 'auto',
+  endpoint: `https://${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId:     process.env.R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+  },
+});
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -418,12 +424,18 @@ app.delete('/api/genres/:id', requireSuperAdmin, async (req, res) => {
 app.post('/api/upload/cover', requireAuth, upload.single('cover'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   try {
-    const filename = `${Date.now()}-${randomBytes(6).toString('hex')}.jpg`;
-    await sharp(req.file.buffer)
+    const key    = `covers/${Date.now()}-${randomBytes(6).toString('hex')}.jpg`;
+    const buffer = await sharp(req.file.buffer)
       .resize(200, 300, { fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 82 })
-      .toFile(path.join(UPLOADS_DIR, filename));
-    res.json({ url: `/uploads/covers/${filename}` });
+      .toBuffer();
+    await r2.send(new PutObjectCommand({
+      Bucket:      process.env.R2_BUCKET_NAME,
+      Key:         key,
+      Body:        buffer,
+      ContentType: 'image/jpeg',
+    }));
+    res.json({ url: `${process.env.R2_PUBLIC_URL}/${key}` });
   } catch (e) { console.error('Cover upload error:', e); res.status(500).json({ error: 'Image processing failed' }); }
 });
 
