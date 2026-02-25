@@ -40,6 +40,9 @@ async function init() {
   el('member-app').classList.add('hidden');
   el('admin-app').classList.add('hidden');
 
+  // Details modal close works from any page
+  el('detail-close-btn').addEventListener('click', () => closeModal('details-modal'));
+
   // Load public clubs/books
   await loadPublicHome();
 
@@ -248,27 +251,34 @@ function renderPublicClubCard(c, expanded) {
   const visible = expanded ? c.books : c.books.slice(0, LIMIT);
   const hasMore = c.books.length > LIMIT;
 
-  const bookItems = visible.length
-    ? visible.map(b => {
-        const cover = b.cover_url
-          ? `<img src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
-          : `<div class="pub-book-ph">&#128214;</div>`;
-        const badge = b.selected
-          ? `<span class="badge badge-selected">&#10003;</span>`
-          : !b.active_for_voting ? `<span class="badge badge-removed">Removed</span>` : '';
-        const meta = [b.author, b.page_count ? `${Number(b.page_count).toLocaleString()} pages` : null, b.genre]
-          .filter(Boolean).join(' · ');
-        const desc = b.description ? b.description.slice(0, 120) + (b.description.length > 120 ? '…' : '') : '';
-        return `<div class="public-book-item">
-          ${cover}
-          <div class="pub-book-info">
-            <div class="pub-book-title">${esc(b.title)}</div>
-            <div class="pub-book-author">${esc(meta)}</div>
-            ${desc ? `<div class="pub-book-desc">${esc(desc)}</div>` : ''}
-            ${badge ? `<div>${badge}</div>` : ''}
-          </div>
-        </div>`;
-      }).join('')
+  const bookRows = visible.length
+    ? `<div class="pub-table-wrap">
+        <table class="pub-books-table">
+          <thead><tr>
+            <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th><th>Pages</th><th>Status</th><th></th>
+          </tr></thead>
+          <tbody>${visible.map(b => {
+            const cover = b.cover_url
+              ? `<img class="thumb-sm" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
+              : `<div class="thumb-sm-ph">&#128214;</div>`;
+            const badge = b.selected
+              ? `<span class="badge badge-selected">&#10003; Selected</span>`
+              : !b.active_for_voting
+                ? `<span class="badge badge-removed">Removed</span>`
+                : `<span class="badge badge-active">Active</span>`;
+            const desc = b.description ? b.description.slice(0, 110) + (b.description.length > 110 ? '…' : '') : '';
+            return `<tr>
+              <td>${cover}</td>
+              <td><strong>${esc(b.title)}</strong>${desc ? `<div class="pub-book-desc">${esc(desc)}</div>` : ''}</td>
+              <td>${esc(b.author || '—')}</td>
+              <td>${esc(b.genre  || '—')}</td>
+              <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
+              <td>${badge}</td>
+              <td><button class="btn btn-ghost btn-xs" onclick="showPublicBookDetails(${c.id},${b.id})">Details</button></td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>`
     : `<p class="dim" style="font-size:.85rem;padding:.5rem 0">No books yet.</p>`;
 
   const expandBtn = !expanded && hasMore
@@ -281,9 +291,14 @@ function renderPublicClubCard(c, expanded) {
     <h3>${esc(c.name)}</h3>
     ${c.description ? `<p class="dim" style="font-size:.85rem;margin-bottom:.5rem">${esc(c.description)}</p>` : ''}
     <p class="pub-book-count dim">${c.books.length} book${c.books.length !== 1 ? 's' : ''}</p>
-    <div class="public-books-list">${bookItems}</div>
+    ${bookRows}
     ${expandBtn}
   </div>`;
+}
+
+function showPublicBookDetails(clubId, bookId) {
+  const club = window._publicClubs?.find(c => c.id === clubId);
+  showBookDetailsForBook(club?.books?.find(x => x.id === bookId));
 }
 
 function expandPublicClub(clubId)   { _expandedClubs.add(clubId);    renderPublicGrid(); }
@@ -358,7 +373,6 @@ function setupMemberListeners() {
   el('clear-preview').addEventListener('click', clearPick);
   el('add-book-btn').addEventListener('click', addBook);
   el('submit-vote-btn').addEventListener('click', submitVote);
-  el('detail-close-btn').addEventListener('click', () => closeModal('details-modal'));
 
   // Manage tab
   el('manage-create-user-btn').addEventListener('click', createMemberFromManage);
@@ -692,32 +706,43 @@ function renderVoteGrid() {
     : allBooks.filter(b => b.active_for_voting && !b.selected && !b.archived);
   const grid = el('vote-grid');
   if (!active.length) { grid.innerHTML = `<p class="dim">No books available for voting.</p>`; return; }
-  grid.innerHTML = active.map(b => {
-    const img = b.cover_url
-      ? `<img src="${b.cover_url}" alt="" onerror="this.outerHTML='<div class=vc-ph>&#128214;</div>'">`
-      : `<div class="vc-ph">&#128214;</div>`;
-    const vcDesc = b.description ? b.description.slice(0, 100) + (b.description.length > 100 ? '…' : '') : '';
-    return `<div class="vote-card" data-id="${b.id}" onclick="toggleVoteCard(${b.id})">
-      ${img}<div class="vc-title">${esc(b.title)}</div>
-      <div class="vc-author">${esc(b.author || '')}</div>
-      ${b.page_count || b.genre ? `<div class="vc-meta">${[b.genre, b.page_count ? Number(b.page_count).toLocaleString()+' pp' : null].filter(Boolean).join(' · ')}</div>` : ''}
-      ${vcDesc ? `<div class="vc-desc">${esc(vcDesc)}</div>` : ''}
-      <div class="vc-check">&#10003;</div>
-    </div>`;
-  }).join('');
+  grid.innerHTML = `<div class="table-scroll">
+    <table class="vote-table">
+      <thead><tr>
+        <th style="width:32px"></th>
+        <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th><th>Pages</th><th></th>
+      </tr></thead>
+      <tbody>${active.map(b => {
+        const img = b.cover_url
+          ? `<img class="thumb-sm" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
+          : `<div class="thumb-sm-ph">&#128214;</div>`;
+        const desc = b.description ? b.description.slice(0, 110) + (b.description.length > 110 ? '…' : '') : '';
+        return `<tr class="vote-row" data-id="${b.id}" onclick="toggleVoteCard(${b.id})">
+          <td class="vote-check-cell"><span class="vote-check-icon">&#10003;</span></td>
+          <td>${img}</td>
+          <td><strong>${esc(b.title)}</strong>${desc ? `<div class="pub-book-desc">${esc(desc)}</div>` : ''}</td>
+          <td>${esc(b.author || '—')}</td>
+          <td>${esc(b.genre  || '—')}</td>
+          <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
+          <td><button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();showBookDetails(${b.id})">Details</button></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>
+  </div>`;
 }
 
 function toggleVoteCard(id) {
   const maxPicks = votingSession?.votes_per_member || 2;
-  const card = document.querySelector(`.vote-card[data-id="${id}"]`);
+  const row = document.querySelector(`.vote-row[data-id="${id}"]`);
+  if (!row) return;
   if (selectedVoteIds.includes(id)) {
     selectedVoteIds = selectedVoteIds.filter(x => x !== id);
-    card.classList.remove('chosen');
+    row.classList.remove('chosen');
   } else if (selectedVoteIds.length < maxPicks) {
-    selectedVoteIds.push(id); card.classList.add('chosen');
+    selectedVoteIds.push(id); row.classList.add('chosen');
   }
-  qsa('.vote-card').forEach(c => {
-    c.classList.toggle('locked', !selectedVoteIds.includes(+c.dataset.id) && selectedVoteIds.length >= maxPicks);
+  qsa('.vote-row').forEach(r => {
+    r.classList.toggle('locked', !selectedVoteIds.includes(+r.dataset.id) && selectedVoteIds.length >= maxPicks);
   });
   el('selected-count').textContent = selectedVoteIds.length;
   el('submit-vote-btn').disabled = selectedVoteIds.length !== maxPicks;
@@ -880,16 +905,27 @@ async function showStartSessionForm(ctx, clubId) {
               <button class="btn btn-ghost btn-xs" onclick="setAllSessionBooks('${ctx}',false)">None</button>
             </div>
           </div>
-          ${books.map(b => {
-            const sbMeta = [b.author, b.page_count ? Number(b.page_count).toLocaleString()+' pp' : null, b.genre].filter(Boolean).join(' · ');
-            return `<label class="session-book-item">
-              <input type="checkbox" class="session-book-cb" data-ctx="${ctx}" value="${b.id}" checked>
-              <div class="session-book-details">
-                <span class="session-book-title">${esc(b.title)}</span>
-                ${sbMeta ? `<span class="session-book-meta">${esc(sbMeta)}</span>` : ''}
-              </div>
-            </label>`;
-          }).join('')}
+          <div class="table-scroll">
+            <table class="session-book-table">
+              <thead><tr>
+                <th style="width:32px"></th>
+                <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th><th>Pages</th>
+              </tr></thead>
+              <tbody>${books.map(b => {
+                const img = b.cover_url
+                  ? `<img class="thumb-sm" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
+                  : `<div class="thumb-sm-ph">&#128214;</div>`;
+                return `<tr>
+                  <td><input type="checkbox" class="session-book-cb" data-ctx="${ctx}" value="${b.id}" checked></td>
+                  <td>${img}</td>
+                  <td><strong>${esc(b.title)}</strong></td>
+                  <td>${esc(b.author || '—')}</td>
+                  <td>${esc(b.genre  || '—')}</td>
+                  <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
+                </tr>`;
+              }).join('')}</tbody>
+            </table>
+          </div>
         </div>
         <div class="row gap-sm mt-sm">
           <button class="btn btn-primary btn-sm" onclick="submitStartSession('${ctx}',${clubId})">Start Vote</button>
@@ -1093,7 +1129,6 @@ function setupAdminListeners() {
   el('analytics-to').addEventListener('change', () => applyAnalyticsFilters('admin'));
   el('analytics-member').addEventListener('change', () => applyAnalyticsFilters('admin'));
   el('analytics-status').addEventListener('change', () => applyAnalyticsFilters('admin'));
-  el('detail-close-btn').addEventListener('click', () => closeModal('details-modal'));
   el('edit-book-save-btn').addEventListener('click', saveEditBook);
   el('edit-book-cancel-btn').addEventListener('click', () => closeModal('edit-book-modal'));
   el('pwd-modal-close').addEventListener('click', () => closeModal('password-modal'));
@@ -1725,28 +1760,33 @@ function renderDrilldownBooks(ctx, title, books) {
       <button class="btn btn-ghost btn-sm" onclick="closeAnalyticsDrilldown('${ctx}')">&#x2715; Close</button>
     </div>
     <div class="drilldown-body">
-      ${books.length ? books.map(b => {
-        const cover = b.cover_url
-          ? `<img src="${b.cover_url}" alt="" onerror="this.style.display='none'" class="drilldown-thumb">`
-          : `<div class="drilldown-thumb-ph">&#128214;</div>`;
-        const meta = [b.author,
-          b.page_count ? Number(b.page_count).toLocaleString()+' pp' : null,
-          b.genre?.split(',')[0]?.trim()].filter(Boolean).join(' · ');
-        const subline = [b.added_by_name ? 'by '+esc(b.added_by_name) : null, fmtDate(b.submitted_at||b.added_at)]
-          .filter(Boolean).join(' · ');
-        const selBadge = b.selected ? `<span class="badge badge-selected" style="font-size:.7rem">&#10003;</span>` : '';
-        const ddDesc = b.description ? b.description.slice(0, 150) + (b.description.length > 150 ? '…' : '') : '';
-        return `<div class="drilldown-book-item">
-          ${cover}
-          <div class="drilldown-book-info">
-            <div class="drilldown-book-title">${esc(b.title)} ${selBadge}</div>
-            <div class="drilldown-book-meta">${esc(meta)}</div>
-            ${subline ? `<div class="drilldown-book-meta">${subline}</div>` : ''}
-            ${ddDesc ? `<div class="drilldown-book-desc">${esc(ddDesc)}</div>` : ''}
-          </div>
-          <button class="btn btn-ghost btn-xs" onclick="showDrilldownBookDetails(${b.id},'${ctx}')">Details</button>
-        </div>`;
-      }).join('') : `<p class="dim" style="padding:.75rem 0">No books.</p>`}
+      ${books.length
+        ? `<div class="table-scroll"><table class="drilldown-table">
+            <thead><tr>
+              <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th><th>Pages</th><th>Submitted By</th><th>Date</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody>${books.map(b => {
+              const cover = b.cover_url
+                ? `<img class="thumb-sm" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
+                : `<div class="thumb-sm-ph">&#128214;</div>`;
+              const desc = b.description ? b.description.slice(0, 120) + (b.description.length > 120 ? '…' : '') : '';
+              const selBadge = b.selected
+                ? `<span class="badge badge-selected" style="font-size:.7rem">&#10003; Selected</span>`
+                : `<span class="badge badge-active" style="font-size:.7rem">Active</span>`;
+              return `<tr>
+                <td>${cover}</td>
+                <td><strong>${esc(b.title)}</strong>${desc ? `<div class="pub-book-desc">${esc(desc)}</div>` : ''}</td>
+                <td>${esc(b.author || '—')}</td>
+                <td>${esc(b.genre  || '—')}</td>
+                <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
+                <td>${esc(b.added_by_name || '—')}</td>
+                <td>${fmtDate(b.submitted_at||b.added_at)}</td>
+                <td>${selBadge}</td>
+                <td><button class="btn btn-ghost btn-xs" onclick="showDrilldownBookDetails(${b.id},'${ctx}')">Details</button></td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table></div>`
+        : `<p class="dim" style="padding:.75rem 0">No books.</p>`}
     </div>`;
   panel.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
