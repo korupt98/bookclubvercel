@@ -26,19 +26,33 @@ const _aState = {
   stats:  { books: [], members: [], filtered: [] },
 };
 
-const GENRES = [
-  'Adventure', 'Biography / Memoir', 'Business', 'Children\'s', 'Crime',
+// Genres loaded from DB; fallback to defaults if API unavailable before login
+let genreList     = [];
+let genreListFull = [];
+const GENRE_DEFAULTS = [
+  'Adventure', 'Biography / Memoir', 'Business', "Children's", 'Crime',
   'Fantasy', 'Fiction', 'Graphic Novel', 'Historical Fiction', 'Horror',
   'Humor', 'Literary Fiction', 'Mystery', 'Non-Fiction', 'Philosophy',
   'Poetry', 'Romance', 'Science', 'Science Fiction', 'Self-Help',
   'Short Stories', 'Spirituality', 'Thriller', 'True Crime', 'Young Adult',
 ];
 
+async function loadGenres() {
+  try {
+    genreListFull = await api('/api/genres');
+    genreList     = genreListFull.map(g => g.name);
+  } catch {
+    genreList     = [...GENRE_DEFAULTS];
+    genreListFull = GENRE_DEFAULTS.map((name, i) => ({ id: -(i + 1), name }));
+  }
+}
+
 function buildGenreCheckboxes(containerId, currentValue) {
   const selected = new Set(
     (currentValue || '').split(',').map(g => g.trim()).filter(Boolean)
   );
-  el(containerId).innerHTML = GENRES.map(g =>
+  const list = genreList.length ? genreList : GENRE_DEFAULTS;
+  el(containerId).innerHTML = list.map(g =>
     `<label class="genre-cb-item">
       <input type="checkbox" value="${esc(g)}"${selected.has(g) ? ' checked' : ''}> ${esc(g)}
     </label>`
@@ -131,6 +145,7 @@ async function fetchMe() {
   const me = await api('/api/auth/me');
   currentUser = me;
   allClubs = me.bookclubs || [];
+  await loadGenres();
   if (me.role === 'superadmin' && !sessionStorage.getItem('bc_member_view')) {
     showAdmin();
   } else {
@@ -447,10 +462,11 @@ async function loadMemberClub() {
 }
 
 function populateGenreFilter() {
+  const list = genreList.length ? genreList : GENRE_DEFAULTS;
   const cur = el('book-filter-genre').value;
   el('book-filter-genre').innerHTML =
     '<option value="">All genres</option>' +
-    GENRES.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
+    list.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
   if (cur) el('book-filter-genre').value = cur;
 }
 
@@ -1156,7 +1172,7 @@ function setupAdminTabs() {
       if (tab === 'books')     loadAdminBooks();
       if (tab === 'voting')    loadAdminVoting();
       if (tab === 'analytics') loadAnalytics();
-      if (tab === 'users')     loadAllUsers();
+      if (tab === 'users')     { loadAllUsers(); renderGenreManager(); }
     });
   });
 }
@@ -1650,6 +1666,85 @@ async function deleteUser(id) {
   try {
     await api(`/api/users/${id}`, 'DELETE');
     await loadAllUsers();
+  } catch (e) { alert(e.message); }
+}
+
+/* ── Admin: Genre Manager (superadmin) ──────────────── */
+function renderGenreManager() {
+  const panel = el('genre-manager');
+  if (!panel) return;
+  const list = genreListFull.length ? genreListFull : [];
+  panel.innerHTML = list.length
+    ? list.map(g => `
+      <div class="genre-manage-row" id="genre-row-${g.id}">
+        <span class="genre-manage-name" id="genre-name-${g.id}">${esc(g.name)}</span>
+        <div class="action-group">
+          <button class="btn btn-ghost btn-xs" onclick="startRenameGenre(${g.id})">Rename</button>
+          <button class="btn btn-danger btn-xs" onclick="confirmDeleteGenre(${g.id}, '${esc(g.name).replace(/'/g,"\\'")}')">Delete</button>
+        </div>
+      </div>`).join('')
+    : `<p class="dim" style="padding:.5rem 0">No genres yet.</p>`;
+}
+
+function showAddGenreForm() {
+  el('add-genre-form').classList.remove('hidden');
+  el('new-genre-name').focus();
+}
+
+function hideAddGenreForm() {
+  el('add-genre-form').classList.add('hidden');
+  el('new-genre-name').value = '';
+  el('add-genre-msg').classList.add('hidden');
+}
+
+async function submitAddGenre() {
+  const name = el('new-genre-name').value.trim();
+  if (!name) return showMsg('add-genre-msg', 'Enter a genre name', 'error');
+  try {
+    const g = await api('/api/genres', 'POST', { name });
+    genreListFull = [...genreListFull, g].sort((a, b) => a.name.localeCompare(b.name));
+    genreList = genreListFull.map(x => x.name);
+    hideAddGenreForm();
+    renderGenreManager();
+  } catch (e) { showMsg('add-genre-msg', e.message, 'error'); }
+}
+
+function startRenameGenre(id) {
+  const g = genreListFull.find(x => x.id === id);
+  if (!g) return;
+  const nameEl = el(`genre-name-${id}`);
+  nameEl.outerHTML = `<input type="text" id="genre-rename-input-${id}" class="genre-rename-input" value="${esc(g.name)}" onkeydown="if(event.key==='Enter')submitRenameGenre(${id});if(event.key==='Escape')renderGenreManager();">`;
+  el(`genre-rename-input-${id}`).select();
+  // Replace action buttons with Save/Cancel
+  const row = el(`genre-row-${id}`);
+  const actions = row.querySelector('.action-group');
+  actions.innerHTML = `
+    <button class="btn btn-primary btn-xs" onclick="submitRenameGenre(${id})">Save</button>
+    <button class="btn btn-ghost btn-xs" onclick="renderGenreManager()">Cancel</button>`;
+}
+
+async function submitRenameGenre(id) {
+  const input = el(`genre-rename-input-${id}`);
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name) return;
+  try {
+    const g = await api(`/api/genres/${id}`, 'PATCH', { name });
+    const idx = genreListFull.findIndex(x => x.id === id);
+    if (idx !== -1) genreListFull[idx] = g;
+    genreListFull.sort((a, b) => a.name.localeCompare(b.name));
+    genreList = genreListFull.map(x => x.name);
+    renderGenreManager();
+  } catch (e) { alert(e.message); }
+}
+
+async function confirmDeleteGenre(id, name) {
+  if (!confirm(`Delete genre "${name}"? Books that use this genre will keep the value but it won't appear in new pickers.`)) return;
+  try {
+    await api(`/api/genres/${id}`, 'DELETE');
+    genreListFull = genreListFull.filter(x => x.id !== id);
+    genreList = genreListFull.map(x => x.name);
+    renderGenreManager();
   } catch (e) { alert(e.message); }
 }
 

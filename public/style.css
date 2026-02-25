@@ -411,6 +411,18 @@ tr.inactive td.td-voting { opacity:1; }
 .session-book-meta   { font-size:.74rem; color:var(--muted); }
 .sh-picks { font-size:.75rem; }
 
+/* ── Genre Manager ───────────────────────────────────── */
+.genre-manager-section { border-top:1px solid var(--border-soft); padding-top:1rem; }
+.genre-add-form { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; padding:.65rem 0 .75rem; }
+.genre-add-input { flex:1; min-width:180px; padding:.4rem .65rem; border:2px solid var(--border); border-radius:var(--radius); font:inherit; }
+.genre-add-input:focus { outline:none; border-color:var(--green); }
+.genre-manage-list { border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); max-height:420px; overflow-y:auto; }
+.genre-manage-row { display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.4rem .75rem; border-bottom:1px solid var(--border-soft); }
+.genre-manage-row:last-child { border-bottom:none; }
+.genre-manage-row:hover { background:var(--bg); }
+.genre-manage-name { font-size:.88rem; font-weight:500; }
+.genre-rename-input { font:inherit; font-size:.88rem; padding:.2rem .45rem; border:2px solid var(--green); border-radius:var(--radius); flex:1; }
+
 /* ── Responsive ──────────────────────────────────────── */
 @media (max-width:700px) {
   .two-col, .three-col, .admin-two-col { grid-template-columns:1fr; }

@@ -91,7 +91,15 @@ CREATE TABLE IF NOT EXISTS vote_entries (
   UNIQUE (vote_id, book_id)
 );
 
+-- Genres (managed by superadmin)
+CREATE TABLE IF NOT EXISTS genres (
+  id         SERIAL PRIMARY KEY,
+  name       TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Indexes
+CREATE INDEX IF NOT EXISTS idx_genres_name            ON genres(name);
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_token    ON auth_sessions(token);
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id  ON auth_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_bookclub_members_user  ON bookclub_members(user_id);

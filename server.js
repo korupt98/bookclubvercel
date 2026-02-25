@@ -366,6 +366,40 @@ app.post('/api/users/:id/reset-password', requireSuperAdmin, async (req, res) =>
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
+// ── Genres ────────────────────────────────────────────────────────────────────
+app.get('/api/genres', requireAuth, async (req, res) => {
+  try { res.json(await db.getGenres()); }
+  catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
+app.post('/api/genres', requireSuperAdmin, async (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Genre name required' });
+  try { res.status(201).json(await db.addGenre(name.trim())); }
+  catch (e) {
+    if (e.code === '23505') return res.status(409).json({ error: 'Genre already exists' });
+    console.error(e); res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.patch('/api/genres/:id', requireSuperAdmin, async (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Genre name required' });
+  try {
+    const g = await db.updateGenre(parseInt(req.params.id), name.trim());
+    if (!g) return res.status(404).json({ error: 'Genre not found' });
+    res.json(g);
+  } catch (e) {
+    if (e.code === '23505') return res.status(409).json({ error: 'Genre already exists' });
+    console.error(e); res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.delete('/api/genres/:id', requireSuperAdmin, async (req, res) => {
+  try { await db.deleteGenre(parseInt(req.params.id)); res.json({ ok: true }); }
+  catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
 // ── Book Search ───────────────────────────────────────────────────────────────
 app.get('/api/search', async (req, res) => {
   const { q } = req.query;

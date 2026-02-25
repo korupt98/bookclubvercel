@@ -443,6 +443,22 @@
           <tbody id="users-tbody"></tbody>
         </table>
       </div>
+
+      <!-- Genre Management -->
+      <div class="genre-manager-section mt-lg">
+        <div class="section-head">
+          <h3>Genre Management</h3>
+          <button class="btn btn-primary btn-sm" onclick="showAddGenreForm()">+ Add Genre</button>
+        </div>
+        <div id="add-genre-form" class="genre-add-form hidden">
+          <input type="text" id="new-genre-name" placeholder="Genre name…" class="genre-add-input"
+            onkeydown="if(event.key==='Enter')submitAddGenre();if(event.key==='Escape')hideAddGenreForm();">
+          <button class="btn btn-primary btn-sm" onclick="submitAddGenre()">Add</button>
+          <button class="btn btn-secondary btn-sm" onclick="hideAddGenreForm()">Cancel</button>
+          <p id="add-genre-msg" class="msg hidden"></p>
+        </div>
+        <div id="genre-manager" class="genre-manage-list"></div>
+      </div>
     </section>
 
   </main>

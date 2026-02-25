@@ -35,6 +35,18 @@ async function init() {
     ON CONFLICT DO NOTHING
   `);
 
+  // Seed default genres (idempotent)
+  const defaultGenres = [
+    'Adventure', 'Biography / Memoir', 'Business', "Children's", 'Crime',
+    'Fantasy', 'Fiction', 'Graphic Novel', 'Historical Fiction', 'Horror',
+    'Humor', 'Literary Fiction', 'Mystery', 'Non-Fiction', 'Philosophy',
+    'Poetry', 'Romance', 'Science', 'Science Fiction', 'Self-Help',
+    'Short Stories', 'Spirituality', 'Thriller', 'True Crime', 'Young Adult',
+  ];
+  for (const name of defaultGenres) {
+    await pool.query('INSERT INTO genres (name) VALUES ($1) ON CONFLICT DO NOTHING', [name]);
+  }
+
   console.log('Database initialized');
 }
 
@@ -522,6 +534,30 @@ async function getAnalytics(clubId, from, to) {
   };
 }
 
+/* ── Genres ─────────────────────────────────────────────────────────────────── */
+async function getGenres() {
+  const { rows } = await pool.query('SELECT * FROM genres ORDER BY name');
+  return rows;
+}
+
+async function addGenre(name) {
+  const { rows } = await pool.query(
+    'INSERT INTO genres (name) VALUES ($1) RETURNING *', [name]
+  );
+  return rows[0];
+}
+
+async function updateGenre(id, name) {
+  const { rows } = await pool.query(
+    'UPDATE genres SET name = $1 WHERE id = $2 RETURNING *', [name, id]
+  );
+  return rows[0] || null;
+}
+
+async function deleteGenre(id) {
+  await pool.query('DELETE FROM genres WHERE id = $1', [id]);
+}
+
 /* ── Exports ────────────────────────────────────────────────────────────────── */
 module.exports = {
   init,
@@ -543,4 +579,6 @@ module.exports = {
   getAllSessions, getSessionVoteDetails, deleteVotingSession,
   // analytics
   getAnalytics,
+  // genres
+  getGenres, addGenre, updateGenre, deleteGenre,
 };
