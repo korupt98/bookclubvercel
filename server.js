@@ -230,6 +230,29 @@ app.patch('/api/bookclubs/:clubId/members/:uid/role', requireClubAdmin, async (r
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
+app.patch('/api/bookclubs/:clubId/members/:uid', requireClubAdmin, async (req, res) => {
+  const uid = parseInt(req.params.uid);
+  const clubId = parseInt(req.params.clubId);
+  const { name, email } = req.body;
+  try {
+    const target = await db.getUser(uid);
+    if (!target) return res.status(404).json({ error: 'User not found' });
+    // Club admins cannot edit superadmins
+    if (target.role === 'superadmin' && req.user.role !== 'superadmin')
+      return res.status(403).json({ error: 'Cannot edit a superadmin' });
+    // Confirm target is a member of this club
+    const clubRole = await db.getClubRole(uid, clubId);
+    if (!clubRole) return res.status(404).json({ error: 'User is not a member of this club' });
+    const updates = {};
+    if (name?.trim())          updates.name  = name.trim();
+    if (email !== undefined)   updates.email = email?.trim() || null;
+    const u = await db.updateUser(uid, updates);
+    if (!u) return res.status(404).json({ error: 'Not found' });
+    const { password_hash, ...safe } = u;
+    res.json(safe);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
 // ── Users ─────────────────────────────────────────────────────────────────────
 app.get('/api/users', requireSuperAdmin, async (req, res) => {
   try {

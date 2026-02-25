@@ -796,6 +796,7 @@ function renderManageMembers() {
       <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
         ${roleBadge}
         <div class="action-group">
+          <button class="btn btn-ghost btn-xs" onclick="openEditMember(${u.id},${currentClubId},'manage')">Edit</button>
           <button class="btn btn-ghost btn-xs" onclick="setMemberClubRole(${u.id},'${u.club_role === 'admin' ? 'member' : 'admin'}')">${toggleLabel}</button>
           <button class="btn btn-danger btn-xs" onclick="removeMemberFromManage(${u.id})">Remove</button>
         </div>
@@ -817,6 +818,36 @@ async function removeMemberFromManage(userId) {
     await api(`/api/bookclubs/${currentClubId}/members/${userId}`, 'DELETE');
     await loadManageTab();
   } catch (e) { alert(e.message); }
+}
+
+function openEditMember(userId, clubId, ctx) {
+  const u = clubMembers.find(x => x.id === userId);
+  if (!u) return;
+  el('edit-member-user-id').value = userId;
+  el('edit-member-club-id').value = clubId;
+  el('edit-member-ctx').value     = ctx;
+  el('edit-member-name').value    = u.name  || '';
+  el('edit-member-email').value   = u.email || '';
+  el('edit-member-role').value    = u.club_role || 'member';
+  el('edit-member-msg').classList.add('hidden');
+  openModal('edit-member-modal');
+}
+
+async function saveEditMember() {
+  const userId = parseInt(el('edit-member-user-id').value);
+  const clubId = parseInt(el('edit-member-club-id').value);
+  const ctx    = el('edit-member-ctx').value;
+  const name   = el('edit-member-name').value.trim();
+  const email  = el('edit-member-email').value.trim() || null;
+  const role   = el('edit-member-role').value;
+  if (!name) return showMsg('edit-member-msg', 'Name is required', 'error');
+  try {
+    await api(`/api/bookclubs/${clubId}/members/${userId}`, 'PATCH', { name, email });
+    await api(`/api/bookclubs/${clubId}/members/${userId}/role`, 'PATCH', { role });
+    closeModal('edit-member-modal');
+    if (ctx === 'admin') await loadAdminMembers();
+    else await loadManageTab();
+  } catch (e) { showMsg('edit-member-msg', e.message, 'error'); }
 }
 
 async function createMemberFromManage() {
@@ -1211,6 +1242,7 @@ function renderMembersList() {
       <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
         ${roleBadge}
         <div class="action-group">
+          <button class="btn btn-ghost btn-xs" onclick="openEditMember(${u.id},${adminClubId},'admin')">Edit</button>
           <button class="btn btn-ghost btn-xs" onclick="resetUserPassword(${u.id})">Reset Pwd</button>
           <button class="btn btn-danger btn-xs" onclick="removeMember(${u.id})">Remove</button>
         </div>
