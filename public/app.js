@@ -266,10 +266,9 @@ function renderPublicClubCard(c, expanded) {
               : !b.active_for_voting
                 ? `<span class="badge badge-removed">Removed</span>`
                 : `<span class="badge badge-active">Active</span>`;
-            const desc = b.description ? b.description.slice(0, 110) + (b.description.length > 110 ? '…' : '') : '';
             return `<tr>
               <td>${cover}</td>
-              <td><strong>${esc(b.title)}</strong>${desc ? `<div class="pub-book-desc">${esc(desc)}</div>` : ''}</td>
+              <td><strong>${esc(b.title)}</strong></td>
               <td>${esc(b.author || '—')}</td>
               <td>${esc(b.genre  || '—')}</td>
               <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
@@ -716,11 +715,10 @@ function renderVoteGrid() {
         const img = b.cover_url
           ? `<img class="thumb-sm" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
           : `<div class="thumb-sm-ph">&#128214;</div>`;
-        const desc = b.description ? b.description.slice(0, 110) + (b.description.length > 110 ? '…' : '') : '';
         return `<tr class="vote-row" data-id="${b.id}" onclick="toggleVoteCard(${b.id})">
           <td class="vote-check-cell"><span class="vote-check-icon">&#10003;</span></td>
           <td>${img}</td>
-          <td><strong>${esc(b.title)}</strong>${desc ? `<div class="pub-book-desc">${esc(desc)}</div>` : ''}</td>
+          <td><strong>${esc(b.title)}</strong></td>
           <td>${esc(b.author || '—')}</td>
           <td>${esc(b.genre  || '—')}</td>
           <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
@@ -797,6 +795,8 @@ function renderManageMembers() {
         ${roleBadge}
         <div class="action-group">
           <button class="btn btn-ghost btn-xs" onclick="openEditMember(${u.id},${currentClubId},'manage')">Edit</button>
+          ${u.email ? `<button class="btn btn-ghost btn-xs" onclick="resetMemberPassword(${u.id},${currentClubId},'manage',false)">Send Invite</button>` : ''}
+          <button class="btn btn-ghost btn-xs" onclick="resetMemberPassword(${u.id},${currentClubId},'manage',true)">Reset Pwd</button>
           <button class="btn btn-ghost btn-xs" onclick="setMemberClubRole(${u.id},'${u.club_role === 'admin' ? 'member' : 'admin'}')">${toggleLabel}</button>
           <button class="btn btn-danger btn-xs" onclick="removeMemberFromManage(${u.id})">Remove</button>
         </div>
@@ -831,6 +831,24 @@ function openEditMember(userId, clubId, ctx) {
   el('edit-member-role').value    = u.club_role || 'member';
   el('edit-member-msg').classList.add('hidden');
   openModal('edit-member-modal');
+}
+
+async function resetMemberPassword(userId, clubId, ctx, showModal) {
+  const msg = showModal
+    ? "Reset this member's password? The new temporary password will be shown."
+    : 'Send a new login invite email to this member? This will also reset their password.';
+  if (!confirm(msg)) return;
+  try {
+    const data = await api(`/api/bookclubs/${clubId}/members/${userId}/reset-password`, 'POST');
+    if (showModal) {
+      const u = clubMembers.find(x => x.id === userId);
+      el('pwd-modal-email').textContent = u?.email || '';
+      el('pwd-modal-value').textContent = data.temp_password;
+      openModal('password-modal');
+    } else {
+      alert('Invite email sent!');
+    }
+  } catch (e) { alert(e.message); }
 }
 
 async function saveEditMember() {
@@ -1243,7 +1261,8 @@ function renderMembersList() {
         ${roleBadge}
         <div class="action-group">
           <button class="btn btn-ghost btn-xs" onclick="openEditMember(${u.id},${adminClubId},'admin')">Edit</button>
-          <button class="btn btn-ghost btn-xs" onclick="resetUserPassword(${u.id})">Reset Pwd</button>
+          ${u.email ? `<button class="btn btn-ghost btn-xs" onclick="resetMemberPassword(${u.id},${adminClubId},'admin',false)">Send Invite</button>` : ''}
+          <button class="btn btn-ghost btn-xs" onclick="resetMemberPassword(${u.id},${adminClubId},'admin',true)">Reset Pwd</button>
           <button class="btn btn-danger btn-xs" onclick="removeMember(${u.id})">Remove</button>
         </div>
       </div>
@@ -1801,13 +1820,12 @@ function renderDrilldownBooks(ctx, title, books) {
               const cover = b.cover_url
                 ? `<img class="thumb-sm" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
                 : `<div class="thumb-sm-ph">&#128214;</div>`;
-              const desc = b.description ? b.description.slice(0, 120) + (b.description.length > 120 ? '…' : '') : '';
               const selBadge = b.selected
                 ? `<span class="badge badge-selected" style="font-size:.7rem">&#10003; Selected</span>`
                 : `<span class="badge badge-active" style="font-size:.7rem">Active</span>`;
               return `<tr>
                 <td>${cover}</td>
-                <td><strong>${esc(b.title)}</strong>${desc ? `<div class="pub-book-desc">${esc(desc)}</div>` : ''}</td>
+                <td><strong>${esc(b.title)}</strong></td>
                 <td>${esc(b.author || '—')}</td>
                 <td>${esc(b.genre  || '—')}</td>
                 <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>

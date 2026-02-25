@@ -253,6 +253,28 @@ app.patch('/api/bookclubs/:clubId/members/:uid', requireClubAdmin, async (req, r
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
+app.post('/api/bookclubs/:clubId/members/:uid/reset-password', requireClubAdmin, async (req, res) => {
+  const uid    = parseInt(req.params.uid);
+  const clubId = parseInt(req.params.clubId);
+  try {
+    const target = await db.getUser(uid);
+    if (!target) return res.status(404).json({ error: 'User not found' });
+    if (target.role === 'superadmin' && req.user.role !== 'superadmin')
+      return res.status(403).json({ error: 'Cannot reset a superadmin password' });
+    const clubRole = await db.getClubRole(uid, clubId);
+    if (!clubRole) return res.status(404).json({ error: 'User is not a member of this club' });
+    const tempPwd = generateTempPassword();
+    await db.updateUser(uid, { password_hash: hashPassword(tempPwd) });
+    if (target.email) {
+      const clubs = await db.getUserBookclubs(uid);
+      try {
+        await sendInviteEmail({ to: target.email, name: target.name, bookclubName: clubs[0]?.name || 'Book Club', loginUrl: APP_URL, tempPassword: tempPwd });
+      } catch (err) { console.error('Email error:', err.message); }
+    }
+    res.json({ temp_password: tempPwd });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
 // ── Users ─────────────────────────────────────────────────────────────────────
 app.get('/api/users', requireSuperAdmin, async (req, res) => {
   try {
