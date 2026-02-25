@@ -192,6 +192,8 @@ tr.inactive td.td-voting { opacity:1; }
 .vc-title  { font-size:.85rem; font-weight:700; line-height:1.3; }
 .vc-author { font-size:.76rem; color:var(--muted); margin-top:.15rem; }
 .vc-pages  { font-size:.73rem; color:var(--muted); }
+.vc-meta   { font-size:.72rem; color:var(--muted); margin-top:.15rem; }
+.vc-desc   { font-size:.71rem; color:var(--muted); margin-top:.2rem; line-height:1.35; text-align:left; }
 .vc-check  { display:none; color:var(--green); font-size:1.2rem; margin-top:.4rem; font-weight:700; }
 .vote-card.chosen .vc-check { display:block; }
 
@@ -293,6 +295,7 @@ tr.inactive td.td-voting { opacity:1; }
 .drilldown-book-info { flex:1; min-width:0; }
 .drilldown-book-title { font-size:.84rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .drilldown-book-meta  { font-size:.75rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.drilldown-book-desc  { font-size:.73rem; color:var(--muted); margin-top:.2rem; line-height:1.4; }
 .drilldown-member-item {
   display:flex; justify-content:space-between; align-items:center; gap:.5rem;
   padding:.4rem .2rem; border-bottom:1px solid var(--border-soft); flex-wrap:wrap;
@@ -322,6 +325,7 @@ tr.inactive td.td-voting { opacity:1; }
 .pub-book-info { flex:1; min-width:0; }
 .pub-book-title { font-size:.85rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .pub-book-author { font-size:.76rem; color:var(--muted); }
+.pub-book-desc  { font-size:.74rem; color:var(--muted); margin-top:.18rem; line-height:1.4; }
 .pub-book-count { font-size:.8rem; margin-bottom:.4rem; }
 .pub-expand-btn { margin-top:.6rem; width:100%; justify-content:center; font-size:.82rem; }
 
@@ -366,11 +370,13 @@ tr.inactive td.td-voting { opacity:1; }
 .session-picks-input:focus { outline:none; border-color:var(--green); }
 .session-book-list { margin-top:.75rem; max-height:260px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); }
 .session-book-list-head { display:flex; justify-content:space-between; align-items:center; padding:.45rem .7rem; border-bottom:1px solid var(--border-soft); position:sticky; top:0; background:var(--surface); }
-.session-book-item { display:flex; align-items:center; gap:.55rem; padding:.4rem .7rem; border-bottom:1px solid var(--border-soft); cursor:pointer; transition:background .1s; }
+.session-book-item { display:flex; align-items:flex-start; gap:.55rem; padding:.4rem .7rem; border-bottom:1px solid var(--border-soft); cursor:pointer; transition:background .1s; }
 .session-book-item:last-child { border-bottom:none; }
 .session-book-item:hover { background:var(--bg); }
-.session-book-item input[type="checkbox"] { flex-shrink:0; accent-color:var(--green); width:15px; height:15px; }
-.session-book-title { font-size:.86rem; font-weight:600; }
+.session-book-item input[type="checkbox"] { flex-shrink:0; accent-color:var(--green); width:15px; height:15px; margin-top:.15rem; }
+.session-book-title  { font-size:.86rem; font-weight:600; display:block; }
+.session-book-details { display:flex; flex-direction:column; min-width:0; }
+.session-book-meta   { font-size:.74rem; color:var(--muted); }
 .sh-picks { font-size:.75rem; }
 
 /* ── Responsive ──────────────────────────────────────── */

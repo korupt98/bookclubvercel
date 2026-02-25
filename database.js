@@ -300,7 +300,7 @@ async function getPublicClubsWithBooks() {
   const result = [];
   for (const club of clubs) {
     const { rows: books } = await pool.query(
-      `SELECT id, title, author, genre, cover_url, page_count, selected, active_for_voting
+      `SELECT id, title, author, genre, cover_url, page_count, description, selected, active_for_voting
        FROM books WHERE bookclub_id = $1 AND archived = FALSE ORDER BY COALESCE(submitted_at, added_at) DESC`,
       [club.id]
     );

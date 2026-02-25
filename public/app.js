@@ -256,13 +256,15 @@ function renderPublicClubCard(c, expanded) {
         const badge = b.selected
           ? `<span class="badge badge-selected">&#10003;</span>`
           : !b.active_for_voting ? `<span class="badge badge-removed">Removed</span>` : '';
-        const meta = [b.author, b.page_count ? `${Number(b.page_count).toLocaleString()} pages` : null]
+        const meta = [b.author, b.page_count ? `${Number(b.page_count).toLocaleString()} pages` : null, b.genre]
           .filter(Boolean).join(' · ');
+        const desc = b.description ? b.description.slice(0, 120) + (b.description.length > 120 ? '…' : '') : '';
         return `<div class="public-book-item">
           ${cover}
           <div class="pub-book-info">
             <div class="pub-book-title">${esc(b.title)}</div>
             <div class="pub-book-author">${esc(meta)}</div>
+            ${desc ? `<div class="pub-book-desc">${esc(desc)}</div>` : ''}
             ${badge ? `<div>${badge}</div>` : ''}
           </div>
         </div>`;
@@ -694,10 +696,12 @@ function renderVoteGrid() {
     const img = b.cover_url
       ? `<img src="${b.cover_url}" alt="" onerror="this.outerHTML='<div class=vc-ph>&#128214;</div>'">`
       : `<div class="vc-ph">&#128214;</div>`;
+    const vcDesc = b.description ? b.description.slice(0, 100) + (b.description.length > 100 ? '…' : '') : '';
     return `<div class="vote-card" data-id="${b.id}" onclick="toggleVoteCard(${b.id})">
       ${img}<div class="vc-title">${esc(b.title)}</div>
       <div class="vc-author">${esc(b.author || '')}</div>
-      ${b.page_count ? `<div class="vc-pages">${Number(b.page_count).toLocaleString()} pages</div>` : ''}
+      ${b.page_count || b.genre ? `<div class="vc-meta">${[b.genre, b.page_count ? Number(b.page_count).toLocaleString()+' pp' : null].filter(Boolean).join(' · ')}</div>` : ''}
+      ${vcDesc ? `<div class="vc-desc">${esc(vcDesc)}</div>` : ''}
       <div class="vc-check">&#10003;</div>
     </div>`;
   }).join('');
@@ -876,12 +880,16 @@ async function showStartSessionForm(ctx, clubId) {
               <button class="btn btn-ghost btn-xs" onclick="setAllSessionBooks('${ctx}',false)">None</button>
             </div>
           </div>
-          ${books.map(b => `
-            <label class="session-book-item">
+          ${books.map(b => {
+            const sbMeta = [b.author, b.page_count ? Number(b.page_count).toLocaleString()+' pp' : null, b.genre].filter(Boolean).join(' · ');
+            return `<label class="session-book-item">
               <input type="checkbox" class="session-book-cb" data-ctx="${ctx}" value="${b.id}" checked>
-              <span class="session-book-title">${esc(b.title)}</span>
-              <span class="dim" style="font-size:.78rem">${esc(b.author || '')}</span>
-            </label>`).join('')}
+              <div class="session-book-details">
+                <span class="session-book-title">${esc(b.title)}</span>
+                ${sbMeta ? `<span class="session-book-meta">${esc(sbMeta)}</span>` : ''}
+              </div>
+            </label>`;
+          }).join('')}
         </div>
         <div class="row gap-sm mt-sm">
           <button class="btn btn-primary btn-sm" onclick="submitStartSession('${ctx}',${clubId})">Start Vote</button>
@@ -1727,12 +1735,14 @@ function renderDrilldownBooks(ctx, title, books) {
         const subline = [b.added_by_name ? 'by '+esc(b.added_by_name) : null, fmtDate(b.submitted_at||b.added_at)]
           .filter(Boolean).join(' · ');
         const selBadge = b.selected ? `<span class="badge badge-selected" style="font-size:.7rem">&#10003;</span>` : '';
+        const ddDesc = b.description ? b.description.slice(0, 150) + (b.description.length > 150 ? '…' : '') : '';
         return `<div class="drilldown-book-item">
           ${cover}
           <div class="drilldown-book-info">
             <div class="drilldown-book-title">${esc(b.title)} ${selBadge}</div>
             <div class="drilldown-book-meta">${esc(meta)}</div>
             ${subline ? `<div class="drilldown-book-meta">${subline}</div>` : ''}
+            ${ddDesc ? `<div class="drilldown-book-desc">${esc(ddDesc)}</div>` : ''}
           </div>
           <button class="btn btn-ghost btn-xs" onclick="showDrilldownBookDetails(${b.id},'${ctx}')">Details</button>
         </div>`;
