@@ -329,10 +329,18 @@ function renderPublicClubCard(c, expanded) {
       ? `<button class="btn btn-ghost btn-sm pub-expand-btn" onclick="collapsePublicClub(${c.id})">Show less ↑</button>`
       : '';
 
+  const booksRead = c.books_read || 0;
+  const pagesRead = c.pages_read || 0;
+  const statsLine = [
+    `${c.books.length} book${c.books.length !== 1 ? 's' : ''}`,
+    booksRead > 0 ? `${booksRead} read` : null,
+    pagesRead > 0 ? `${pagesRead.toLocaleString()} pages read` : null,
+  ].filter(Boolean).join(' · ');
+
   return `<div class="public-club-card">
     <h3>${esc(c.name)}</h3>
     ${c.description ? `<p class="dim" style="font-size:.85rem;margin-bottom:.5rem">${esc(c.description)}</p>` : ''}
-    <p class="pub-book-count dim">${c.books.length} book${c.books.length !== 1 ? 's' : ''}</p>
+    <p class="pub-book-count dim">${statsLine}</p>
     ${bookRows}
     ${expandBtn}
   </div>`;
@@ -1205,7 +1213,7 @@ function showDrilldownBookDetails(bookId, ctx) {
 /* ══════════════════════════════════════════════════════════════════════════════
    ADMIN APP (Superadmin)
 ══════════════════════════════════════════════════════════════════════════════ */
-function showAdmin() {
+async function showAdmin() {
   sessionStorage.removeItem('bc_member_view');
   el('public-home').classList.add('hidden');
   el('login-page').classList.add('hidden');
@@ -1213,8 +1221,8 @@ function showAdmin() {
   el('admin-app').classList.remove('hidden');
   setupAdminTabs();
   setupAdminListeners();
-  populateAdminClubSelect();
-  loadAdminClubs();
+  await loadAdminClubs();
+  loadAdminMembers();
   loadAllUsers();
 }
 
@@ -1230,7 +1238,7 @@ function setupAdminTabs() {
       if (tab === 'books')     loadAdminBooks();
       if (tab === 'voting')    loadAdminVoting();
       if (tab === 'analytics') loadAnalytics();
-      if (tab === 'users')     { loadAllUsers(); renderGenreManager(); }
+      if (tab === 'users')     { loadAdminClubs(); loadAllUsers(); renderGenreManager(); }
     });
   });
 }
@@ -1315,13 +1323,16 @@ async function createClub() {
 }
 
 async function deleteClub(id) {
-  if (!confirm('Delete this book club and all its books? This cannot be undone.')) return;
+  const club = allClubs.find(c => c.id === id);
+  if (!club) return;
+  if (!confirm(`Delete "${club.name}"?\n\nA club can only be deleted if it has no members and no books. This cannot be undone.`)) return;
   try {
     await api(`/api/bookclubs/${id}`, 'DELETE');
     allClubs = allClubs.filter(c => c.id !== id);
     populateAdminClubSelect();
     renderClubsGrid();
-  } catch (e) { alert(e.message); }
+    el('clubs-msg').classList.add('hidden');
+  } catch (e) { showMsg('clubs-msg', e.message, 'error'); }
 }
 
 /* ── Admin: Members ──────────────────────────────────── */

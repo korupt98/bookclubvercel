@@ -279,8 +279,7 @@
 
   <nav class="tab-bar">
     <div class="tab-bar-inner">
-      <button class="tab active" data-admin-tab="clubs">Book Clubs</button>
-      <button class="tab" data-admin-tab="members">Members</button>
+      <button class="tab active" data-admin-tab="members">Members</button>
       <button class="tab" data-admin-tab="books">Books</button>
       <button class="tab" data-admin-tab="voting">Voting</button>
       <button class="tab" data-admin-tab="analytics">Analytics</button>
@@ -290,29 +289,8 @@
 
   <main class="main-content">
 
-    <!-- Clubs -->
-    <section id="admin-tab-clubs" class="tab-pane active">
-      <div class="section-head">
-        <h2>Book Clubs</h2>
-        <button id="show-create-club-btn" class="btn btn-primary btn-sm">+ New Club</button>
-      </div>
-      <div id="create-club-form" class="card form-card mb-lg hidden">
-        <h3>Create Book Club</h3>
-        <div class="two-col">
-          <div class="field"><label>Name <span class="req">*</span></label><input type="text" id="new-club-name" placeholder="e.g. Fiction Fridays"></div>
-          <div class="field"><label>Description</label><input type="text" id="new-club-desc" placeholder="Optional"></div>
-        </div>
-        <div class="row gap-sm">
-          <button id="create-club-btn" class="btn btn-primary">Create</button>
-          <button id="cancel-create-club-btn" class="btn btn-secondary">Cancel</button>
-        </div>
-        <p id="create-club-msg" class="msg hidden"></p>
-      </div>
-      <div id="clubs-list" class="clubs-grid"></div>
-    </section>
-
     <!-- Members -->
-    <section id="admin-tab-members" class="tab-pane">
+    <section id="admin-tab-members" class="tab-pane active">
       <h2>Members <span id="members-club-label" class="dim"></span></h2>
       <div class="admin-two-col">
         <div>
@@ -461,6 +439,28 @@
 
     <!-- Users (superadmin) -->
     <section id="admin-tab-users" class="tab-pane">
+
+      <!-- Book Clubs Management -->
+      <div class="section-head" style="margin-bottom:1rem">
+        <h2 style="margin:0">Book Clubs</h2>
+        <button id="show-create-club-btn" class="btn btn-primary btn-sm">+ New Club</button>
+      </div>
+      <div id="create-club-form" class="card form-card mb-lg hidden">
+        <h3>Create Book Club</h3>
+        <div class="two-col">
+          <div class="field"><label>Name <span class="req">*</span></label><input type="text" id="new-club-name" placeholder="e.g. Fiction Fridays"></div>
+          <div class="field"><label>Description</label><input type="text" id="new-club-desc" placeholder="Optional"></div>
+        </div>
+        <div class="row gap-sm">
+          <button id="create-club-btn" class="btn btn-primary">Create</button>
+          <button id="cancel-create-club-btn" class="btn btn-secondary">Cancel</button>
+        </div>
+        <p id="create-club-msg" class="msg hidden"></p>
+      </div>
+      <div id="clubs-list" class="clubs-grid mb-lg"></div>
+      <p id="clubs-msg" class="msg hidden"></p>
+      <hr style="border:none;border-top:1px solid var(--border-soft);margin:1.5rem 0">
+
       <h2>All Users</h2>
       <div id="users-table-wrap" class="table-scroll">
         <table>

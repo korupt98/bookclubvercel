@@ -316,7 +316,19 @@ async function getPublicClubsWithBooks() {
        FROM books WHERE bookclub_id = $1 AND archived = FALSE ORDER BY COALESCE(submitted_at, added_at) DESC`,
       [club.id]
     );
-    result.push({ ...club, books });
+    const { rows: stats } = await pool.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE selected) AS books_read,
+         COALESCE(SUM(page_count) FILTER (WHERE selected AND page_count IS NOT NULL), 0) AS pages_read
+       FROM books WHERE bookclub_id = $1`,
+      [club.id]
+    );
+    result.push({
+      ...club,
+      books,
+      books_read: Number(stats[0].books_read),
+      pages_read: Number(stats[0].pages_read),
+    });
   }
   return result;
 }

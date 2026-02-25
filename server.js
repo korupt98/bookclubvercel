@@ -204,8 +204,15 @@ app.patch('/api/bookclubs/:clubId', requireSuperAdmin, async (req, res) => {
 });
 
 app.delete('/api/bookclubs/:clubId', requireSuperAdmin, async (req, res) => {
+  const clubId = parseInt(req.params.clubId);
   try {
-    await db.deleteBookclub(parseInt(req.params.clubId));
+    const members = await db.getBookclubMembers(clubId);
+    if (members.length > 0)
+      return res.status(400).json({ error: `Cannot delete: club has ${members.length} member${members.length !== 1 ? 's' : ''}. Remove all members first.` });
+    const books = await db.getBooks(clubId);
+    if (books.length > 0)
+      return res.status(400).json({ error: `Cannot delete: club has ${books.length} book${books.length !== 1 ? 's' : ''}. Remove all books first.` });
+    await db.deleteBookclub(clubId);
     res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
