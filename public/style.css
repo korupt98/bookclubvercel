@@ -423,6 +423,14 @@ tr.inactive td.td-voting { opacity:1; }
 .genre-manage-name { font-size:.88rem; font-weight:500; }
 .genre-rename-input { font:inherit; font-size:.88rem; padding:.2rem .45rem; border:2px solid var(--green); border-radius:var(--radius); flex:1; }
 
+/* ── Cover Upload ────────────────────────────────────── */
+.cover-upload-row { display:flex; align-items:flex-start; gap:.75rem; flex-wrap:wrap; }
+.cover-upload-thumb { flex-shrink:0; }
+.cover-upload-thumb img { width:60px; height:90px; object-fit:cover; border-radius:var(--radius); border:1px solid var(--border); display:block; }
+.cover-upload-actions { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; }
+.cover-upload-label { cursor:pointer; position:relative; overflow:hidden; display:inline-flex; }
+.cover-file-input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+
 /* ── Responsive ──────────────────────────────────────── */
 @media (max-width:700px) {
   .two-col, .three-col, .admin-two-col { grid-template-columns:1fr; }

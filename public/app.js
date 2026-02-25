@@ -13,6 +13,10 @@ let manageVotingSession = null;
 let selectedVoteIds  = [];
 let pickedBook       = null;
 let adminPickedBook  = null;
+let uploadedCoverUrl      = null;  // member add form
+let adminUploadedCoverUrl = null;  // admin add form
+let editCoverUrl          = null;  // admin edit modal (null = no change)
+let memberEditCoverUrl    = null;  // member edit modal (null = no change)
 let searchTimer      = null;
 let adminSearchTimer = null;
 let _memberSetup     = false;
@@ -590,6 +594,12 @@ function memberOpenOwnEdit(id) {
   memVotingCb.disabled = !!b.selected;
   el('member-edit-msg').classList.add('hidden');
   openModal('member-edit-modal');
+  memberEditCoverUrl = null;
+  el('cover-upload-thumb-medit').innerHTML = b.cover_url
+    ? `<img src="${b.cover_url}" alt="Cover">` : '';
+  el('cover-upload-thumb-medit').classList.toggle('hidden', !b.cover_url);
+  el('cover-clear-medit').classList.add('hidden');
+  showMsg('cover-upload-msg-medit', '', '');
 }
 
 async function saveMemberEdit() {
@@ -602,6 +612,7 @@ async function saveMemberEdit() {
       page_count:        parseInt(el('member-edit-page-count').value) || null,
       description:       el('member-edit-desc').value.trim() || null,
       active_for_voting: el('member-edit-active-voting').checked,
+      ...(memberEditCoverUrl !== null && { cover_url: memberEditCoverUrl }),
     });
     const idx = allBooks.findIndex(x => x.id === id);
     if (idx !== -1) allBooks[idx] = updated;
@@ -656,8 +667,53 @@ async function pickBook(i) {
   } else { el('preview-desc').textContent = ''; }
 }
 
+/* ── Cover Upload helpers ────────────────────────────── */
+async function uploadCoverFile(file) {
+  const fd = new FormData();
+  fd.append('cover', file);
+  const resp = await fetch('/api/upload/cover', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${authToken}` },
+    body: fd,
+  });
+  if (!resp.ok) { const e = await resp.json(); throw new Error(e.error || 'Upload failed'); }
+  return (await resp.json()).url;
+}
+
+async function handleCoverUpload(event, ctx) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const msgId   = `cover-upload-msg-${ctx}`;
+  const thumbId = `cover-upload-thumb-${ctx}`;
+  showMsg(msgId, 'Uploading…', '');
+  try {
+    const url = await uploadCoverFile(file);
+    if (ctx === 'member')     uploadedCoverUrl      = url;
+    else if (ctx === 'admin') adminUploadedCoverUrl = url;
+    else if (ctx === 'edit')  editCoverUrl          = url;
+    else if (ctx === 'medit') memberEditCoverUrl    = url;
+    el(thumbId).innerHTML = `<img src="${url}" alt="Cover">`;
+    el(thumbId).classList.remove('hidden');
+    el(`cover-clear-${ctx}`).classList.remove('hidden');
+    showMsg(msgId, 'Uploaded', 'success');
+  } catch (e) { showMsg(msgId, e.message, 'error'); }
+  event.target.value = '';
+}
+
+function clearUploadedCover(ctx) {
+  if (ctx === 'member')     uploadedCoverUrl      = null;
+  else if (ctx === 'admin') adminUploadedCoverUrl = null;
+  else if (ctx === 'edit')  editCoverUrl          = null;
+  else if (ctx === 'medit') memberEditCoverUrl    = null;
+  el(`cover-upload-thumb-${ctx}`).classList.add('hidden');
+  el(`cover-upload-thumb-${ctx}`).innerHTML = '';
+  el(`cover-clear-${ctx}`).classList.add('hidden');
+  showMsg(`cover-upload-msg-${ctx}`, '', '');
+}
+
 function clearPick() {
   pickedBook = null;
+  clearUploadedCover('member');
   el('book-title').value = ''; el('book-author').value = '';
   el('book-description').value = '';
   buildGenreCheckboxes('book-genre-select', '');
@@ -674,7 +730,7 @@ async function addBook() {
   try {
     const book = await api(`/api/bookclubs/${currentClubId}/books`, 'POST', {
       title, author: author || null,
-      cover_url:       pickedBook?.cover_url       || null,
+      cover_url:       uploadedCoverUrl || pickedBook?.cover_url || null,
       open_library_id: pickedBook?.open_library_id || null,
       page_count:      pickedBook?.page_count      || null,
       description:     description || null,
@@ -1469,6 +1525,7 @@ async function adminPickBook(i) {
 
 function adminClearPick() {
   adminPickedBook = null;
+  clearUploadedCover('admin');
   ['admin-book-title','admin-book-author','admin-book-description','admin-book-search'].forEach(id => el(id).value = '');
   buildGenreCheckboxes('admin-book-genre-select', '');
   el('admin-book-preview').classList.add('hidden');
@@ -1488,7 +1545,7 @@ async function adminAddBook() {
   try {
     const book = await api(`/api/bookclubs/${adminClubId}/books`, 'POST', {
       title, author: author || null, genre: genre || null,
-      cover_url:       adminPickedBook?.cover_url       || null,
+      cover_url:       adminUploadedCoverUrl || adminPickedBook?.cover_url || null,
       open_library_id: adminPickedBook?.open_library_id || null,
       page_count:      adminPickedBook?.page_count      || null,
       description:     description || null,
@@ -1524,6 +1581,13 @@ function openEditBook(id) {
   populateSubmitterSelect('edit-submitter');
   if (b.added_by_user_id) el('edit-submitter').value = b.added_by_user_id;
   openModal('edit-book-modal');
+  // Reset cover upload state
+  editCoverUrl = null;
+  el('cover-upload-thumb-edit').innerHTML = b.cover_url
+    ? `<img src="${b.cover_url}" alt="Cover">` : '';
+  el('cover-upload-thumb-edit').classList.toggle('hidden', !b.cover_url);
+  el('cover-clear-edit').classList.add('hidden');
+  showMsg('cover-upload-msg-edit', '', '');
 }
 
 async function saveEditBook() {
@@ -1546,6 +1610,7 @@ async function saveEditBook() {
       selected_at:      selectedAt ? new Date(selectedAt).toISOString() : null,
       added_by_user_id: submitterId,
       added_by_name:    submitterId ? submitterName : null,
+      ...(editCoverUrl !== null && { cover_url: editCoverUrl }),
     });
     const idx = allBooks.findIndex(x => x.id === id);
     if (idx !== -1) allBooks[idx] = updated;

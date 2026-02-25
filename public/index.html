@@ -150,6 +150,19 @@
           <div class="field"><label>Title <span class="req">*</span></label><input type="text" id="book-title" placeholder="Book title"></div>
           <div class="field"><label>Author</label><input type="text" id="book-author" placeholder="Author name"></div>
         </div>
+        <div class="field">
+          <label>Cover Image</label>
+          <div class="cover-upload-row">
+            <div id="cover-upload-thumb-member" class="cover-upload-thumb hidden"></div>
+            <div class="cover-upload-actions">
+              <label class="btn btn-ghost btn-sm cover-upload-label">Upload Cover
+                <input type="file" accept="image/*" class="cover-file-input" onchange="handleCoverUpload(event,'member')">
+              </label>
+              <button type="button" id="cover-clear-member" class="btn btn-ghost btn-xs hidden" onclick="clearUploadedCover('member')">Remove</button>
+              <span id="cover-upload-msg-member" class="msg hidden" style="font-size:.8rem"></span>
+            </div>
+          </div>
+        </div>
         <div class="field"><label>Genre <span class="hint">(select all that apply)</span></label>
           <div class="genre-picker" id="book-genre-select"></div>
         </div>
@@ -357,6 +370,19 @@
           <div class="field"><label>Title <span class="req">*</span></label><input type="text" id="admin-book-title" placeholder="Book title"></div>
           <div class="field"><label>Author</label><input type="text" id="admin-book-author" placeholder="Author"></div>
         </div>
+        <div class="field">
+          <label>Cover Image</label>
+          <div class="cover-upload-row">
+            <div id="cover-upload-thumb-admin" class="cover-upload-thumb hidden"></div>
+            <div class="cover-upload-actions">
+              <label class="btn btn-ghost btn-sm cover-upload-label">Upload Cover
+                <input type="file" accept="image/*" class="cover-file-input" onchange="handleCoverUpload(event,'admin')">
+              </label>
+              <button type="button" id="cover-clear-admin" class="btn btn-ghost btn-xs hidden" onclick="clearUploadedCover('admin')">Remove</button>
+              <span id="cover-upload-msg-admin" class="msg hidden" style="font-size:.8rem"></span>
+            </div>
+          </div>
+        </div>
         <div class="field"><label>Genre</label>
           <div class="genre-picker" id="admin-book-genre-select"></div>
         </div>
@@ -515,6 +541,19 @@
       <div class="field"><label>Title</label><input type="text" id="edit-title"></div>
       <div class="field"><label>Author</label><input type="text" id="edit-author"></div>
     </div>
+    <div class="field">
+      <label>Cover Image</label>
+      <div class="cover-upload-row">
+        <div id="cover-upload-thumb-edit" class="cover-upload-thumb hidden"></div>
+        <div class="cover-upload-actions">
+          <label class="btn btn-ghost btn-sm cover-upload-label">Upload Cover
+            <input type="file" accept="image/*" class="cover-file-input" onchange="handleCoverUpload(event,'edit')">
+          </label>
+          <button type="button" id="cover-clear-edit" class="btn btn-ghost btn-xs hidden" onclick="clearUploadedCover('edit')">Remove</button>
+          <span id="cover-upload-msg-edit" class="msg hidden" style="font-size:.8rem"></span>
+        </div>
+      </div>
+    </div>
     <div class="field"><label>Genre</label>
       <div class="genre-picker" id="edit-genre-select"></div>
     </div>
@@ -548,6 +587,19 @@
       <input type="text" id="member-edit-title"></div>
     <div class="field"><label>Author</label>
       <input type="text" id="member-edit-author"></div>
+    <div class="field">
+      <label>Cover Image</label>
+      <div class="cover-upload-row">
+        <div id="cover-upload-thumb-medit" class="cover-upload-thumb hidden"></div>
+        <div class="cover-upload-actions">
+          <label class="btn btn-ghost btn-sm cover-upload-label">Upload Cover
+            <input type="file" accept="image/*" class="cover-file-input" onchange="handleCoverUpload(event,'medit')">
+          </label>
+          <button type="button" id="cover-clear-medit" class="btn btn-ghost btn-xs hidden" onclick="clearUploadedCover('medit')">Remove</button>
+          <span id="cover-upload-msg-medit" class="msg hidden" style="font-size:.8rem"></span>
+        </div>
+      </div>
+    </div>
     <div class="field"><label>Genre <span class="hint">(select all that apply)</span></label>
       <div class="genre-picker" id="member-edit-genre-select"></div>
     </div>

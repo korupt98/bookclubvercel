@@ -286,7 +286,7 @@ async function insertBook(fields) {
 async function updateBook(id, fields) {
   const allowed = [
     'title','author','genre','page_count','description','submitted_at',
-    'selected','selected_at','added_by_name','added_by_user_id','active_for_voting','archived',
+    'selected','selected_at','added_by_name','added_by_user_id','active_for_voting','archived','cover_url',
   ];
   const filtered = {};
   for (const k of allowed) {

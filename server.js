@@ -2,9 +2,23 @@
 require('dotenv').config();
 const express = require('express');
 const path    = require('path');
+const fs      = require('fs');
 const db      = require('./database');
 const { hashPassword, verifyPassword, generateToken, generateTempPassword, verifyGoogleToken } = require('./auth');
 const { sendInviteEmail } = require('./email');
+const multer = require('multer');
+const sharp  = require('sharp');
+const { randomBytes } = require('crypto');
+
+const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads', 'covers');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_, file, cb) =>
+    file.mimetype.startsWith('image/') ? cb(null, true) : cb(new Error('Images only')),
+});
 
 const app             = express();
 const PORT            = process.env.PORT || 3000;
@@ -400,6 +414,19 @@ app.delete('/api/genres/:id', requireSuperAdmin, async (req, res) => {
   catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
+// ── Cover Upload ──────────────────────────────────────────────────────────────
+app.post('/api/upload/cover', requireAuth, upload.single('cover'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  try {
+    const filename = `${Date.now()}-${randomBytes(6).toString('hex')}.jpg`;
+    await sharp(req.file.buffer)
+      .resize(200, 300, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 82 })
+      .toFile(path.join(UPLOADS_DIR, filename));
+    res.json({ url: `/uploads/covers/${filename}` });
+  } catch (e) { console.error('Cover upload error:', e); res.status(500).json({ error: 'Image processing failed' }); }
+});
+
 // ── Book Search ───────────────────────────────────────────────────────────────
 app.get('/api/search', async (req, res) => {
   const { q } = req.query;
@@ -477,8 +504,8 @@ app.patch('/api/bookclubs/:clubId/books/:id', requireClubAccess, async (req, res
     if (!isPrivileged && !isOwner)
       return res.status(403).json({ error: 'You can only edit your own books' });
     const adminFields  = ['title','author','genre','page_count','description','submitted_at',
-                          'selected','selected_at','added_by_name','added_by_user_id','active_for_voting'];
-    const memberFields = ['title','author','genre','page_count','description','active_for_voting'];
+                          'selected','selected_at','added_by_name','added_by_user_id','active_for_voting','cover_url'];
+    const memberFields = ['title','author','genre','page_count','description','active_for_voting','cover_url'];
     const allowed = isPrivileged ? adminFields : memberFields;
     const fields = {};
     for (const k of allowed) { if (req.body[k] !== undefined) fields[k] = req.body[k]; }
