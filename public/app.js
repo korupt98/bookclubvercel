@@ -648,6 +648,7 @@ async function pickBook(i) {
   el('book-search').value       = '';
   el('book-title').value        = pickedBook.title;
   el('book-author').value       = pickedBook.author;
+  el('book-page-count').value   = pickedBook.page_count || '';
   el('book-description').value  = '';
   el('preview-title').textContent  = pickedBook.title;
   el('preview-author').textContent = pickedBook.author;
@@ -715,6 +716,7 @@ function clearPick() {
   pickedBook = null;
   clearUploadedCover('member');
   el('book-title').value = ''; el('book-author').value = '';
+  el('book-page-count').value = '';
   el('book-description').value = '';
   buildGenreCheckboxes('book-genre-select', '');
   el('book-search').value = '';
@@ -732,7 +734,7 @@ async function addBook() {
       title, author: author || null,
       cover_url:       uploadedCoverUrl || pickedBook?.cover_url || null,
       open_library_id: pickedBook?.open_library_id || null,
-      page_count:      pickedBook?.page_count      || null,
+      page_count:      parseInt(el('book-page-count').value) || null,
       description:     description || null,
       genre:           genre || null,
     });
