@@ -150,9 +150,8 @@
           <div class="field"><label>Title <span class="req">*</span></label><input type="text" id="book-title" placeholder="Book title"></div>
           <div class="field"><label>Author</label><input type="text" id="book-author" placeholder="Author name"></div>
         </div>
-        <div class="two-col">
-          <div class="field"><label>Genre</label><input type="text" id="book-genre" placeholder="e.g. Fiction"></div>
-          <div class="field"></div>
+        <div class="field"><label>Genre <span class="hint">(select all that apply)</span></label>
+          <div class="genre-picker" id="book-genre-select"></div>
         </div>
         <div class="field"><label>Description</label><textarea id="book-description" rows="3" placeholder="Optional summary…"></textarea></div>
         <button id="add-book-btn" class="btn btn-primary">Add to List</button>
@@ -354,10 +353,12 @@
           </div>
           <button id="admin-clear-preview" class="btn btn-ghost btn-sm" style="align-self:flex-start">Clear</button>
         </div>
-        <div class="three-col">
+        <div class="two-col">
           <div class="field"><label>Title <span class="req">*</span></label><input type="text" id="admin-book-title" placeholder="Book title"></div>
           <div class="field"><label>Author</label><input type="text" id="admin-book-author" placeholder="Author"></div>
-          <div class="field"><label>Genre</label><input type="text" id="admin-book-genre" placeholder="e.g. Fiction"></div>
+        </div>
+        <div class="field"><label>Genre</label>
+          <div class="genre-picker" id="admin-book-genre-select"></div>
         </div>
         <div class="three-col">
           <div class="field">
@@ -494,10 +495,12 @@
   <div class="modal-box modal-wide">
     <h2>Edit Book</h2>
     <input type="hidden" id="edit-book-id">
-    <div class="three-col">
+    <div class="two-col">
       <div class="field"><label>Title</label><input type="text" id="edit-title"></div>
       <div class="field"><label>Author</label><input type="text" id="edit-author"></div>
-      <div class="field"><label>Genre</label><input type="text" id="edit-genre"></div>
+    </div>
+    <div class="field"><label>Genre</label>
+      <div class="genre-picker" id="edit-genre-select"></div>
     </div>
     <div class="three-col">
       <div class="field">
@@ -529,8 +532,9 @@
       <input type="text" id="member-edit-title"></div>
     <div class="field"><label>Author</label>
       <input type="text" id="member-edit-author"></div>
-    <div class="field"><label>Genre</label>
-      <input type="text" id="member-edit-genre" placeholder="e.g. Fiction"></div>
+    <div class="field"><label>Genre <span class="hint">(select all that apply)</span></label>
+      <div class="genre-picker" id="member-edit-genre-select"></div>
+    </div>
     <div class="field"><label>Page Count</label>
       <input type="number" id="member-edit-page-count" min="1"></div>
     <div class="field"><label>Description / Summary</label>

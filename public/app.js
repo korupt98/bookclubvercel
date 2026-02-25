@@ -26,6 +26,30 @@ const _aState = {
   stats:  { books: [], members: [], filtered: [] },
 };
 
+const GENRES = [
+  'Adventure', 'Biography / Memoir', 'Business', 'Children\'s', 'Crime',
+  'Fantasy', 'Fiction', 'Graphic Novel', 'Historical Fiction', 'Horror',
+  'Humor', 'Literary Fiction', 'Mystery', 'Non-Fiction', 'Philosophy',
+  'Poetry', 'Romance', 'Science', 'Science Fiction', 'Self-Help',
+  'Short Stories', 'Spirituality', 'Thriller', 'True Crime', 'Young Adult',
+];
+
+function buildGenreCheckboxes(containerId, currentValue) {
+  const selected = new Set(
+    (currentValue || '').split(',').map(g => g.trim()).filter(Boolean)
+  );
+  el(containerId).innerHTML = GENRES.map(g =>
+    `<label class="genre-cb-item">
+      <input type="checkbox" value="${esc(g)}"${selected.has(g) ? ' checked' : ''}> ${esc(g)}
+    </label>`
+  ).join('');
+}
+
+function getGenreValues(containerId) {
+  return [...el(containerId).querySelectorAll('input[type="checkbox"]:checked')]
+    .map(cb => cb.value).join(', ') || null;
+}
+
 function _aCtxId(ctx, admin, manage, stats) {
   if (ctx === 'admin')  return admin;
   if (ctx === 'manage') return manage;
@@ -356,6 +380,7 @@ function setupMemberTabs() {
 }
 
 function setupMemberListeners() {
+  buildGenreCheckboxes('book-genre-select', '');
   el('show-inactive').addEventListener('change', renderBooksTable);
   el('book-search').addEventListener('input', () => {
     clearTimeout(searchTimer);
@@ -422,13 +447,10 @@ async function loadMemberClub() {
 }
 
 function populateGenreFilter() {
-  const genres = [...new Set(
-    allBooks.map(b => b.genre?.split(',')[0]?.trim()).filter(Boolean)
-  )].sort();
   const cur = el('book-filter-genre').value;
   el('book-filter-genre').innerHTML =
     '<option value="">All genres</option>' +
-    genres.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
+    GENRES.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
   if (cur) el('book-filter-genre').value = cur;
 }
 
@@ -442,7 +464,7 @@ function renderBooksTable() {
   if (q)     books = books.filter(b =>
     b.title?.toLowerCase().includes(q) || b.author?.toLowerCase().includes(q));
   if (genre) books = books.filter(b =>
-    b.genre?.split(',')[0]?.trim().toLowerCase() === genre.toLowerCase());
+    b.genre?.split(',').map(g => g.trim()).includes(genre));
 
   // client-side sort
   books = [...books].sort((a, b) => {
@@ -544,7 +566,7 @@ function memberOpenOwnEdit(id) {
   el('member-edit-book-id').value    = b.id;
   el('member-edit-title').value      = b.title;
   el('member-edit-author').value     = b.author || '';
-  el('member-edit-genre').value      = b.genre  || '';
+  buildGenreCheckboxes('member-edit-genre-select', b.genre || '');
   el('member-edit-page-count').value = b.page_count || '';
   el('member-edit-desc').value       = b.description || '';
   const memVotingCb = el('member-edit-active-voting');
@@ -560,7 +582,7 @@ async function saveMemberEdit() {
     const updated = await api(`/api/bookclubs/${currentClubId}/books/${id}`, 'PATCH', {
       title:       el('member-edit-title').value.trim(),
       author:      el('member-edit-author').value.trim() || null,
-      genre:             el('member-edit-genre').value.trim()  || null,
+      genre:             getGenreValues('member-edit-genre-select'),
       page_count:        parseInt(el('member-edit-page-count').value) || null,
       description:       el('member-edit-desc').value.trim() || null,
       active_for_voting: el('member-edit-active-voting').checked,
@@ -599,12 +621,11 @@ async function pickBook(i) {
   el('book-search').value       = '';
   el('book-title').value        = pickedBook.title;
   el('book-author').value       = pickedBook.author;
-  el('book-genre').value        = pickedBook.genre || '';
   el('book-description').value  = '';
   el('preview-title').textContent  = pickedBook.title;
   el('preview-author').textContent = pickedBook.author;
   el('preview-pages').textContent  = pickedBook.page_count ? `${pickedBook.page_count} pages` : '';
-  el('preview-genre').textContent  = pickedBook.genre ? `Genre: ${pickedBook.genre}` : '';
+  el('preview-genre').textContent  = '';
   el('preview-desc').textContent   = 'Loading description…';
   const img = el('preview-img');
   img.src = pickedBook.cover_url || ''; img.style.display = pickedBook.cover_url ? 'block' : 'none';
@@ -613,11 +634,8 @@ async function pickBook(i) {
     try {
       const info = await api(`/api/book-info?key=${encodeURIComponent(pickedBook.open_library_id)}`);
       pickedBook.description = info.description || null;
-      if (info.genre && !pickedBook.genre) pickedBook.genre = info.genre;
-      el('preview-desc').textContent  = info.description || '';
-      el('preview-genre').textContent = pickedBook.genre ? `Genre: ${pickedBook.genre}` : '';
-      el('book-genre').value          = pickedBook.genre || '';
-      el('book-description').value    = info.description || '';
+      el('preview-desc').textContent = info.description || '';
+      el('book-description').value   = info.description || '';
     } catch { el('preview-desc').textContent = ''; }
   } else { el('preview-desc').textContent = ''; }
 }
@@ -625,7 +643,8 @@ async function pickBook(i) {
 function clearPick() {
   pickedBook = null;
   el('book-title').value = ''; el('book-author').value = '';
-  el('book-genre').value = ''; el('book-description').value = '';
+  el('book-description').value = '';
+  buildGenreCheckboxes('book-genre-select', '');
   el('book-search').value = '';
   el('book-preview').classList.add('hidden');
 }
@@ -633,7 +652,7 @@ function clearPick() {
 async function addBook() {
   const title       = el('book-title').value.trim();
   const author      = el('book-author').value.trim();
-  const genre       = el('book-genre').value.trim();
+  const genre       = getGenreValues('book-genre-select');
   const description = el('book-description').value.trim();
   if (!title) return showAddMsg('Please enter a book title.', 'error');
   try {
@@ -1156,6 +1175,7 @@ function populateAdminClubSelect() {
 }
 
 function setupAdminListeners() {
+  buildGenreCheckboxes('admin-book-genre-select', '');
   el('show-create-club-btn').addEventListener('click', () => el('create-club-form').classList.toggle('hidden'));
   el('cancel-create-club-btn').addEventListener('click', () => el('create-club-form').classList.add('hidden'));
   el('create-club-btn').addEventListener('click', createClub);
@@ -1412,12 +1432,11 @@ async function adminPickBook(i) {
   el('admin-book-search').value       = '';
   el('admin-book-title').value        = adminPickedBook.title;
   el('admin-book-author').value       = adminPickedBook.author;
-  el('admin-book-genre').value        = adminPickedBook.genre || '';
   el('admin-book-description').value  = '';
   el('admin-preview-title').textContent  = adminPickedBook.title;
   el('admin-preview-author').textContent = adminPickedBook.author;
   el('admin-preview-pages').textContent  = adminPickedBook.page_count ? `${adminPickedBook.page_count} pages` : '';
-  el('admin-preview-genre').textContent  = adminPickedBook.genre ? `Genre: ${adminPickedBook.genre}` : '';
+  el('admin-preview-genre').textContent  = '';
   el('admin-preview-desc').textContent   = '';
   const img = el('admin-preview-img');
   img.src = adminPickedBook.cover_url || ''; img.style.display = adminPickedBook.cover_url ? 'block' : 'none';
@@ -1426,27 +1445,23 @@ async function adminPickBook(i) {
     try {
       const info = await api(`/api/book-info?key=${encodeURIComponent(adminPickedBook.open_library_id)}`);
       adminPickedBook.description = info.description || null;
-      if (info.genre && !adminPickedBook.genre) {
-        adminPickedBook.genre = info.genre;
-        el('admin-book-genre').value          = info.genre;
-        el('admin-preview-genre').textContent = `Genre: ${info.genre}`;
-      }
-      el('admin-preview-desc').textContent  = info.description || '';
-      el('admin-book-description').value    = info.description || '';
+      el('admin-preview-desc').textContent = info.description || '';
+      el('admin-book-description').value   = info.description || '';
     } catch {}
   }
 }
 
 function adminClearPick() {
   adminPickedBook = null;
-  ['admin-book-title','admin-book-author','admin-book-genre','admin-book-description','admin-book-search'].forEach(id => el(id).value = '');
+  ['admin-book-title','admin-book-author','admin-book-description','admin-book-search'].forEach(id => el(id).value = '');
+  buildGenreCheckboxes('admin-book-genre-select', '');
   el('admin-book-preview').classList.add('hidden');
 }
 
 async function adminAddBook() {
   const title        = el('admin-book-title').value.trim();
   const author       = el('admin-book-author').value.trim();
-  const genre        = el('admin-book-genre').value.trim();
+  const genre        = getGenreValues('admin-book-genre-select');
   const description  = el('admin-book-description').value.trim();
   const submitterSel = el('admin-book-submitter');
   const submitterId  = parseInt(submitterSel.value) || null;
@@ -1482,7 +1497,7 @@ function openEditBook(id) {
   el('edit-book-id').value        = b.id;
   el('edit-title').value          = b.title;
   el('edit-author').value         = b.author || '';
-  el('edit-genre').value          = b.genre  || '';
+  buildGenreCheckboxes('edit-genre-select', b.genre || '');
   el('edit-submitted-at').value   = b.submitted_at ? b.submitted_at.slice(0,10) : '';
   el('edit-selected-at').value    = b.selected_at  ? b.selected_at.slice(0,10)  : '';
   el('edit-page-count').value     = b.page_count || '';
@@ -1506,7 +1521,7 @@ async function saveEditBook() {
     const updated = await api(`/api/bookclubs/${clubId}/books/${id}`, 'PATCH', {
       title:            el('edit-title').value.trim(),
       author:           el('edit-author').value.trim() || null,
-      genre:            el('edit-genre').value.trim()  || null,
+      genre:            getGenreValues('edit-genre-select'),
       page_count:       parseInt(el('edit-page-count').value) || null,
       description:      el('edit-description').value.trim() || null,
       active_for_voting: el('edit-active-voting').checked,
@@ -1651,7 +1666,10 @@ function computeAnalyticsFromBooks(books, members) {
     .sort((a, b) => b.submitted - a.submitted);
   const genreMap = {};
   for (const b of books) {
-    if (b.genre) { const g = b.genre.split(',')[0].trim(); if (g) genreMap[g]=(genreMap[g]||0)+1; }
+    if (b.genre) {
+      for (const g of b.genre.split(',').map(s => s.trim()).filter(Boolean))
+        genreMap[g] = (genreMap[g] || 0) + 1;
+    }
   }
   const genres = Object.entries(genreMap).sort((a,b) => b[1]-a[1]);
   const by_month = {};
@@ -1661,8 +1679,21 @@ function computeAnalyticsFromBooks(books, members) {
   const withPages = books.filter(b => b.page_count);
   const avg_page_count = withPages.length
     ? Math.round(withPages.reduce((s,b)=>s+Number(b.page_count),0)/withPages.length) : null;
+
+  // Average days between consecutive selected books (by selected_at date)
+  const readDated = selected.filter(b => b.selected_at)
+    .sort((a, b) => new Date(a.selected_at) - new Date(b.selected_at));
+  let avg_days_between = null;
+  if (readDated.length >= 2) {
+    const diffs = [];
+    for (let i = 1; i < readDated.length; i++) {
+      diffs.push((new Date(readDated[i].selected_at) - new Date(readDated[i-1].selected_at)) / 86400000);
+    }
+    avg_days_between = Math.round(diffs.reduce((s, d) => s + d, 0) / diffs.length);
+  }
+
   return { total_submitted:books.length, total_read:selected.length,
-           total_members:members.length, avg_page_count, by_user, genres, by_month };
+           total_members:members.length, avg_page_count, avg_days_between, by_user, genres, by_month };
 }
 
 async function loadAnalyticsCtx(ctx) {
@@ -1754,6 +1785,8 @@ function renderAnalytics(d, ctx) {
         <div class="stat-value">${d.total_members}</div><div class="stat-label">Members</div></div>
       <div class="stat-card clickable" onclick="showAnalyticsDrilldown('${ctx}','pages')" title="Click to see books by page count">
         <div class="stat-value">${d.avg_page_count ?? '—'}</div><div class="stat-label">Avg Pages</div></div>
+      <div class="stat-card" title="Average days between books being selected in this timeframe">
+        <div class="stat-value">${d.avg_days_between ?? '—'}</div><div class="stat-label">Avg Days Between Reads</div></div>
     </div>
     ${d.by_user.length ? `<div class="analytics-section"><h3>Submissions &amp; Selections by Member</h3>
       ${d.by_user.map(u => `<div class="bar-row clickable" onclick="showAnalyticsDrilldown('${ctx}','member',${u.id})" title="Click to see these books">
@@ -1794,7 +1827,7 @@ function showAnalyticsDrilldown(ctx, type, value) {
       const u = _aState[ctx].members.find(m => m.id === value);
       title = `Read from ${u?.name || 'member'}`; break;
     }
-    case 'genre': books = f.filter(b=>b.genre?.split(',')[0]?.trim()===value); title = `Genre: ${value}`; break;
+    case 'genre': books = f.filter(b=>b.genre?.split(',').map(s=>s.trim()).includes(value)); title = `Genre: ${value}`; break;
     case 'month': books = f.filter(b=>b.selected_at?.slice(0,7)===value);      title = `Read in ${value}`; break;
     default: return;
   }
