@@ -79,17 +79,17 @@
 
   <nav class="tab-bar">
     <div class="tab-bar-inner">
-      <button class="tab active" data-tab="books">Book List</button>
+      <button class="tab active" data-tab="stats">Dashboard</button>
+      <button class="tab" data-tab="books">Book List</button>
       <button class="tab" data-tab="add">Add Book</button>
       <button class="tab" data-tab="vote">Vote</button>
-      <button class="tab" data-tab="stats">Stats</button>
       <button class="tab hidden" data-tab="manage" id="manage-tab-btn">Manage</button>
     </div>
   </nav>
 
   <main class="main-content">
     <!-- Book List -->
-    <section id="tab-books" class="tab-pane active">
+    <section id="tab-books" class="tab-pane">
       <div class="section-head">
         <h2>All Books</h2>
       </div>
@@ -197,7 +197,7 @@
     </section>
 
     <!-- Stats (all logged-in members) -->
-    <section id="tab-stats" class="tab-pane">
+    <section id="tab-stats" class="tab-pane active">
       <div class="section-head">
         <h2>Stats <span id="stats-club-label" class="dim"></span></h2>
       </div>
@@ -279,10 +279,10 @@
 
   <nav class="tab-bar">
     <div class="tab-bar-inner">
-      <button class="tab active" data-admin-tab="members">Members</button>
+      <button class="tab active" data-admin-tab="analytics">Dashboard</button>
+      <button class="tab" data-admin-tab="members">Members</button>
       <button class="tab" data-admin-tab="books">Books</button>
       <button class="tab" data-admin-tab="voting">Voting</button>
-      <button class="tab" data-admin-tab="analytics">Analytics</button>
       <button class="tab" data-admin-tab="users">Manage</button>
     </div>
   </nav>
@@ -290,7 +290,7 @@
   <main class="main-content">
 
     <!-- Members -->
-    <section id="admin-tab-members" class="tab-pane active">
+    <section id="admin-tab-members" class="tab-pane">
       <h2>Members <span id="members-club-label" class="dim"></span></h2>
       <div class="admin-two-col">
         <div>
@@ -416,7 +416,7 @@
     </section>
 
     <!-- Analytics -->
-    <section id="admin-tab-analytics" class="tab-pane">
+    <section id="admin-tab-analytics" class="tab-pane active">
       <div class="section-head">
         <h2>Analytics <span id="analytics-club-label" class="dim"></span></h2>
       </div>

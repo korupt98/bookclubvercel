@@ -14,7 +14,6 @@ let selectedVoteIds  = [];
 let pickedBook       = null;
 let adminPickedBook  = null;
 let _confirmCallback      = null;  // for the "type yes" confirm modal
-let _defaultedToManage    = false; // club admins auto-navigate to Manage once per session
 let uploadedCoverUrl      = null;  // member add form
 let adminUploadedCoverUrl = null;  // admin add form
 let editCoverUrl          = null;  // admin edit modal (null = no change)
@@ -399,14 +398,7 @@ function showMember() {
   if (allClubs.length) {
     currentClubId = allClubs[0].id;
     loadMemberClub();
-  }
-  // Club admins land on the Manage tab on first load
-  if (hasAdminClub && !isSuperAdmin() && !_defaultedToManage) {
-    _defaultedToManage = true;
-    setTimeout(() => {
-      const btn = el('manage-tab-btn');
-      if (btn && !btn.classList.contains('hidden')) btn.click();
-    }, 0);
+    loadMemberStats();
   }
 }
 
@@ -1266,7 +1258,7 @@ async function showAdmin() {
   setupAdminTabs();
   setupAdminListeners();
   await loadAdminClubs();
-  loadAdminMembers();
+  loadAnalytics();
   loadAllUsers();
 }
 
