@@ -645,6 +645,21 @@
   </div>
 </div>
 
+<!-- Confirm Action Modal (requires typing "yes") -->
+<div id="confirm-modal" class="modal">
+  <div class="modal-box">
+    <h2 id="confirm-modal-title">Confirm</h2>
+    <p id="confirm-modal-msg" class="dim" style="margin-bottom:1.1rem;line-height:1.5"></p>
+    <p style="font-size:.88rem;margin-bottom:.4rem">Type <strong>yes</strong> to confirm:</p>
+    <input type="text" id="confirm-modal-input" placeholder="yes" autocomplete="off"
+      style="width:100%;padding:.6rem .85rem;border:2px solid var(--border);border-radius:var(--radius);font:inherit;font-size:.95rem">
+    <div class="row gap-sm mt-sm">
+      <button id="confirm-modal-ok" class="btn btn-danger" disabled>Confirm</button>
+      <button id="confirm-modal-cancel" class="btn btn-secondary">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://accounts.google.com/gsi/client" async onload="onGSILoad()"></script>
 <script src="app.js"></script>
 </body>

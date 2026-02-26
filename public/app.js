@@ -13,6 +13,8 @@ let manageVotingSession = null;
 let selectedVoteIds  = [];
 let pickedBook       = null;
 let adminPickedBook  = null;
+let _confirmCallback      = null;  // for the "type yes" confirm modal
+let _defaultedToManage    = false; // club admins auto-navigate to Manage once per session
 let uploadedCoverUrl      = null;  // member add form
 let adminUploadedCoverUrl = null;  // admin add form
 let editCoverUrl          = null;  // admin edit modal (null = no change)
@@ -84,6 +86,23 @@ async function init() {
 
   // Details modal close works from any page
   el('detail-close-btn').addEventListener('click', () => closeModal('details-modal'));
+
+  // "Type yes" confirm modal
+  el('confirm-modal-input').addEventListener('input', () => {
+    el('confirm-modal-ok').disabled =
+      el('confirm-modal-input').value.trim().toLowerCase() !== 'yes';
+  });
+  el('confirm-modal-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !el('confirm-modal-ok').disabled) el('confirm-modal-ok').click();
+  });
+  el('confirm-modal-ok').addEventListener('click', () => {
+    if (el('confirm-modal-input').value.trim().toLowerCase() !== 'yes') return;
+    closeModal('confirm-modal');
+    if (_confirmCallback) { _confirmCallback(); _confirmCallback = null; }
+  });
+  el('confirm-modal-cancel').addEventListener('click', () => {
+    closeModal('confirm-modal'); _confirmCallback = null;
+  });
 
   // Load public clubs/books
   await loadPublicHome();
@@ -381,6 +400,14 @@ function showMember() {
     currentClubId = allClubs[0].id;
     loadMemberClub();
   }
+  // Club admins land on the Manage tab on first load
+  if (hasAdminClub && !isSuperAdmin() && !_defaultedToManage) {
+    _defaultedToManage = true;
+    setTimeout(() => {
+      const btn = el('manage-tab-btn');
+      if (btn && !btn.classList.contains('hidden')) btn.click();
+    }, 0);
+  }
 }
 
 function setupMemberClubSwitcher() {
@@ -676,6 +703,17 @@ async function pickBook(i) {
   } else { el('preview-desc').textContent = ''; }
 }
 
+/* ── Confirm Action (type "yes") ─────────────────────── */
+function confirmAction(title, message, callback) {
+  _confirmCallback = callback;
+  el('confirm-modal-title').textContent = title;
+  el('confirm-modal-msg').textContent   = message;
+  el('confirm-modal-input').value       = '';
+  el('confirm-modal-ok').disabled       = true;
+  openModal('confirm-modal');
+  setTimeout(() => el('confirm-modal-input').focus(), 60);
+}
+
 /* ── Cover Upload helpers ────────────────────────────── */
 async function uploadCoverFile(file) {
   const fd = new FormData();
@@ -913,12 +951,18 @@ async function setMemberClubRole(userId, role) {
   } catch (e) { alert(e.message); }
 }
 
-async function removeMemberFromManage(userId) {
-  if (!confirm('Remove this member from the club?')) return;
-  try {
-    await api(`/api/bookclubs/${currentClubId}/members/${userId}`, 'DELETE');
-    await loadManageTab();
-  } catch (e) { alert(e.message); }
+function removeMemberFromManage(userId) {
+  const u = clubMembers.find(m => m.id === userId);
+  confirmAction(
+    'Remove Member',
+    `Remove ${u?.name || 'this member'} from the club? This cannot be undone.`,
+    async () => {
+      try {
+        await api(`/api/bookclubs/${currentClubId}/members/${userId}`, 'DELETE');
+        await loadManageTab();
+      } catch (e) { alert(e.message); }
+    }
+  );
 }
 
 function openEditMember(userId, clubId, ctx) {
@@ -1322,17 +1366,22 @@ async function createClub() {
   } catch (e) { showMsg('create-club-msg', e.message, 'error'); }
 }
 
-async function deleteClub(id) {
+function deleteClub(id) {
   const club = allClubs.find(c => c.id === id);
   if (!club) return;
-  if (!confirm(`Delete "${club.name}"?\n\nA club can only be deleted if it has no members and no books. This cannot be undone.`)) return;
-  try {
-    await api(`/api/bookclubs/${id}`, 'DELETE');
-    allClubs = allClubs.filter(c => c.id !== id);
-    populateAdminClubSelect();
-    renderClubsGrid();
-    el('clubs-msg').classList.add('hidden');
-  } catch (e) { showMsg('clubs-msg', e.message, 'error'); }
+  confirmAction(
+    'Delete Book Club',
+    `Delete "${club.name}"? A club can only be deleted if it has no members and no books. This cannot be undone.`,
+    async () => {
+      try {
+        await api(`/api/bookclubs/${id}`, 'DELETE');
+        allClubs = allClubs.filter(c => c.id !== id);
+        populateAdminClubSelect();
+        renderClubsGrid();
+        el('clubs-msg').classList.add('hidden');
+      } catch (e) { showMsg('clubs-msg', e.message, 'error'); }
+    }
+  );
 }
 
 /* ── Admin: Members ──────────────────────────────────── */
@@ -1411,12 +1460,17 @@ async function addExistingUser() {
   } catch (e) { showMsg('add-existing-msg', e.message, 'error'); }
 }
 
-async function removeMember(userId) {
-  if (!confirm('Remove this member from the club?')) return;
-  try {
-    await api(`/api/bookclubs/${adminClubId}/members/${userId}`, 'DELETE');
-    await loadAdminMembers();
-  } catch (e) { alert(e.message); }
+function removeMember(userId) {
+  confirmAction(
+    'Remove Member',
+    'Remove this member from the club? This cannot be undone.',
+    async () => {
+      try {
+        await api(`/api/bookclubs/${adminClubId}/members/${userId}`, 'DELETE');
+        await loadAdminMembers();
+      } catch (e) { alert(e.message); }
+    }
+  );
 }
 
 async function resetUserPassword(userId) {
@@ -1634,13 +1688,19 @@ async function saveEditBook() {
   } catch (e) { showMsg('edit-book-msg', e.message, 'error'); }
 }
 
-async function adminDeleteBook(id) {
-  if (!confirm('Permanently delete this book?')) return;
-  try {
-    await api(`/api/bookclubs/${adminClubId}/books/${id}`, 'DELETE');
-    allBooks = allBooks.filter(b => b.id !== id);
-    renderAdminBooksTable();
-  } catch (e) { alert(e.message); }
+function adminDeleteBook(id) {
+  const b = allBooks.find(x => x.id === id);
+  confirmAction(
+    'Delete Book',
+    `Permanently delete "${b?.title || 'this book'}"? This cannot be undone.`,
+    async () => {
+      try {
+        await api(`/api/bookclubs/${adminClubId}/books/${id}`, 'DELETE');
+        allBooks = allBooks.filter(b => b.id !== id);
+        renderAdminBooksTable();
+      } catch (e) { alert(e.message); }
+    }
+  );
 }
 
 function showAdminBookDetails(id) { showBookDetails(id); }
@@ -1739,12 +1799,18 @@ async function setUserRole(userId, role) {
   } catch (e) { alert(e.message); }
 }
 
-async function deleteUser(id) {
-  if (!confirm('Permanently delete this user?')) return;
-  try {
-    await api(`/api/users/${id}`, 'DELETE');
-    await loadAllUsers();
-  } catch (e) { alert(e.message); }
+function deleteUser(id) {
+  const u = allUsers.find(x => x.id === id);
+  confirmAction(
+    'Delete User',
+    `Permanently delete "${u?.name || 'this user'}"? This cannot be undone.`,
+    async () => {
+      try {
+        await api(`/api/users/${id}`, 'DELETE');
+        await loadAllUsers();
+      } catch (e) { alert(e.message); }
+    }
+  );
 }
 
 /* ── Admin: Genre Manager (superadmin) ──────────────── */
@@ -1816,14 +1882,19 @@ async function submitRenameGenre(id) {
   } catch (e) { alert(e.message); }
 }
 
-async function confirmDeleteGenre(id, name) {
-  if (!confirm(`Delete genre "${name}"? Books that use this genre will keep the value but it won't appear in new pickers.`)) return;
-  try {
-    await api(`/api/genres/${id}`, 'DELETE');
-    genreListFull = genreListFull.filter(x => x.id !== id);
-    genreList = genreListFull.map(x => x.name);
-    renderGenreManager();
-  } catch (e) { alert(e.message); }
+function confirmDeleteGenre(id, name) {
+  confirmAction(
+    'Delete Genre',
+    `Delete genre "${name}"? Books that use this genre will keep the value but it won't appear in new pickers.`,
+    async () => {
+      try {
+        await api(`/api/genres/${id}`, 'DELETE');
+        genreListFull = genreListFull.filter(x => x.id !== id);
+        genreList = genreListFull.map(x => x.name);
+        renderGenreManager();
+      } catch (e) { alert(e.message); }
+    }
+  );
 }
 
 /* ── Analytics ───────────────────────────────────────── */
@@ -1845,9 +1916,21 @@ function computeAnalyticsFromBooks(books, members) {
     }
   }
   const genres = Object.entries(genreMap).sort((a,b) => b[1]-a[1]);
+  const total_pages_read = selected.reduce((s, b) => s + (b.page_count ? Number(b.page_count) : 0), 0);
   const by_month = {};
+  const by_year  = {};
   for (const b of selected) {
-    if (b.selected_at) { const m=new Date(b.selected_at).toISOString().slice(0,7); by_month[m]=(by_month[m]||0)+1; }
+    if (b.selected_at) {
+      const m     = new Date(b.selected_at).toISOString().slice(0, 7);
+      const y     = m.slice(0, 4);
+      const pages = b.page_count ? Number(b.page_count) : 0;
+      if (!by_month[m]) by_month[m] = { books: 0, pages: 0 };
+      by_month[m].books++;
+      by_month[m].pages += pages;
+      if (!by_year[y]) by_year[y] = { books: 0, pages: 0 };
+      by_year[y].books++;
+      by_year[y].pages += pages;
+    }
   }
   const withPages = books.filter(b => b.page_count);
   const avg_page_count = withPages.length
@@ -1865,8 +1948,8 @@ function computeAnalyticsFromBooks(books, members) {
     avg_days_between = Math.round(diffs.reduce((s, d) => s + d, 0) / diffs.length);
   }
 
-  return { total_submitted:books.length, total_read:selected.length,
-           total_members:members.length, avg_page_count, avg_days_between, by_user, genres, by_month };
+  return { total_submitted:books.length, total_read:selected.length, total_pages_read,
+           total_members:members.length, avg_page_count, avg_days_between, by_user, genres, by_month, by_year };
 }
 
 async function loadAnalyticsCtx(ctx) {
@@ -1943,10 +2026,14 @@ function applyAnalyticsFilters(ctx) {
 }
 
 function renderAnalytics(d, ctx) {
-  const contentId = _aCtxId(ctx, 'analytics-content', 'manage-analytics-content', 'stats-content');
+  const contentId   = _aCtxId(ctx, 'analytics-content', 'manage-analytics-content', 'stats-content');
   const maxByUser   = Math.max(...d.by_user.map(u => u.submitted), 1);
   const maxGenre    = d.genres.length ? d.genres[0][1] : 1;
-  const monthEntries= Object.entries(d.by_month).sort();
+  const monthEntries = Object.entries(d.by_month).sort();
+  const yearEntries  = Object.entries(d.by_year).sort();
+
+  const fmtPill = (v) =>
+    `${v.books} book${v.books !== 1 ? 's' : ''}${v.pages > 0 ? ' · ' + v.pages.toLocaleString() + ' pg' : ''}`;
 
   el(contentId).innerHTML = `
     <div class="stat-cards">
@@ -1954,6 +2041,8 @@ function renderAnalytics(d, ctx) {
         <div class="stat-value">${d.total_submitted}</div><div class="stat-label">Books Submitted</div></div>
       <div class="stat-card clickable" onclick="showAnalyticsDrilldown('${ctx}','selected')" title="Click to see these books">
         <div class="stat-value">${d.total_read}</div><div class="stat-label">Books Read</div></div>
+      <div class="stat-card clickable" onclick="showAnalyticsDrilldown('${ctx}','pages-read')" title="Click to see books read">
+        <div class="stat-value">${d.total_pages_read > 0 ? d.total_pages_read.toLocaleString() : '—'}</div><div class="stat-label">Pages Read</div></div>
       <div class="stat-card clickable" onclick="showAnalyticsDrilldown('${ctx}','members')" title="Click to see members">
         <div class="stat-value">${d.total_members}</div><div class="stat-label">Members</div></div>
       <div class="stat-card clickable" onclick="showAnalyticsDrilldown('${ctx}','pages')" title="Click to see books by page count">
@@ -1974,9 +2063,16 @@ function renderAnalytics(d, ctx) {
         <div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/maxGenre*100)}%"></div></div>
         <div class="bar-count">${n}</div>
       </div>`).join('')}</div>` : ''}
+    ${yearEntries.length ? `<div class="analytics-section"><h3>Books Read by Year</h3>
+      <div class="month-grid">${yearEntries.map(([y, v]) =>
+        `<div class="month-pill clickable" onclick="showAnalyticsDrilldown('${ctx}','year','${y}')" title="Click to see these books">
+          ${y} &nbsp;&#x2022;&nbsp; ${fmtPill(v)}</div>`).join('')}
+      </div></div>` : ''}
     ${monthEntries.length ? `<div class="analytics-section"><h3>Books Read by Month</h3>
-      <div class="month-grid">${monthEntries.map(([k, n]) => `<div class="month-pill clickable" onclick="showAnalyticsDrilldown('${ctx}','month','${k}')" title="Click to see these books">${k} &nbsp;&#x2022;&nbsp; ${n}</div>`).join('')}</div>
-    </div>` : ''}
+      <div class="month-grid">${monthEntries.map(([k, v]) =>
+        `<div class="month-pill clickable" onclick="showAnalyticsDrilldown('${ctx}','month','${k}')" title="Click to see these books">
+          ${k} &nbsp;&#x2022;&nbsp; ${fmtPill(v)}</div>`).join('')}
+      </div></div>` : ''}
   `;
 }
 
@@ -2002,6 +2098,11 @@ function showAnalyticsDrilldown(ctx, type, value) {
     }
     case 'genre': books = f.filter(b=>b.genre?.split(',').map(s=>s.trim()).includes(value)); title = `Genre: ${value}`; break;
     case 'month': books = f.filter(b=>b.selected_at?.slice(0,7)===value);      title = `Read in ${value}`; break;
+    case 'year':  books = f.filter(b=>b.selected && b.selected_at?.slice(0,4)===String(value));
+                                                                                title = `Books Read in ${value}`; break;
+    case 'pages-read': books = [...f].filter(b=>b.selected && b.page_count)
+                         .sort((a,b)=>Number(b.page_count)-Number(a.page_count));
+                                                                                title = 'Books Read (by Pages)'; break;
     default: return;
   }
   renderDrilldownBooks(ctx, title, books);
