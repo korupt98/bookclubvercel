@@ -898,42 +898,84 @@ function renderVoteGrid() {
     : allBooks.filter(b => b.active_for_voting && !b.selected && !b.archived);
   const grid = el('vote-grid');
   if (!active.length) { grid.innerHTML = `<p class="dim">No books available for voting.</p>`; return; }
-  grid.innerHTML = `<div class="table-scroll">
-    <table class="vote-table">
-      <thead><tr>
-        <th style="width:32px"></th>
-        <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th><th>Pages</th><th></th>
-      </tr></thead>
-      <tbody>${active.map(b => {
-        const img = b.cover_url
-          ? `<img class="thumb-sm" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
-          : `<div class="thumb-sm-ph">&#128214;</div>`;
-        return `<tr class="vote-row" data-id="${b.id}" onclick="toggleVoteCard(${b.id})">
-          <td class="vote-check-cell"><span class="vote-check-icon">&#10003;</span></td>
-          <td>${img}</td>
-          <td><strong>${esc(b.title)}</strong></td>
-          <td>${esc(b.author || '—')}</td>
-          <td>${esc(b.genre  || '—')}</td>
-          <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
-          <td><button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();showBookDetails(${b.id})">Details</button></td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table>
-  </div>`;
+
+  let tableRows = '';
+  let cardRows  = '';
+
+  active.forEach(b => {
+    const img = b.cover_url
+      ? `<img class="thumb-sm" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
+      : `<div class="thumb-sm-ph">&#128214;</div>`;
+    tableRows += `<tr class="vote-row" data-id="${b.id}" onclick="toggleVoteCard(${b.id})">
+      <td class="vote-check-cell"><span class="vote-check-icon">&#10003;</span></td>
+      <td>${img}</td>
+      <td><strong>${esc(b.title)}</strong></td>
+      <td>${esc(b.author || '—')}</td>
+      <td>${esc(b.genre  || '—')}</td>
+      <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
+      <td><button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();showBookDetails(${b.id})">Details</button></td>
+    </tr>`;
+
+    const cardImg = b.cover_url
+      ? `<img class="vc-cover-img" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
+      : `<div class="vc-cover-ph">&#128214;</div>`;
+    const metaParts = [
+      b.release_year || null,
+      b.page_count ? `${Number(b.page_count).toLocaleString()} pp` : null,
+      b.genre ? b.genre.split(',')[0].trim() : null,
+    ].filter(Boolean);
+    const hasSynopsis = !!b.description;
+    cardRows += `
+      <div class="vote-card vote-row" data-id="${b.id}" onclick="toggleVoteCard(${b.id})">
+        <div class="vc-main">
+          <div class="vc-check"><span class="vote-check-icon">&#10003;</span></div>
+          <div class="vc-cover">${cardImg}</div>
+          <div class="vc-info">
+            <div class="vc-title">${esc(b.title)}</div>
+            ${b.author ? `<div class="vc-author">${esc(b.author)}</div>` : ''}
+            ${metaParts.length ? `<div class="vc-meta">${metaParts.join(' · ')}</div>` : ''}
+            <div class="vc-actions">
+              <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();showBookDetails(${b.id})">Details</button>
+              ${hasSynopsis ? `<button class="bc-synopsis-btn" onclick="event.stopPropagation();toggleVoteSynopsis(${b.id},this)">Synopsis ▾</button>` : ''}
+            </div>
+          </div>
+        </div>
+        ${hasSynopsis ? `<div id="vc-syn-${b.id}" class="bc-synopsis hidden">${esc(b.description)}</div>` : ''}
+      </div>`;
+  });
+
+  grid.innerHTML = `
+    <div class="table-scroll">
+      <table class="vote-table">
+        <thead><tr>
+          <th style="width:32px"></th>
+          <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th><th>Pages</th><th></th>
+        </tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>
+    <div class="vote-cards">${cardRows}</div>`;
+}
+
+function toggleVoteSynopsis(id, btn) {
+  const syn = document.getElementById(`vc-syn-${id}`);
+  if (!syn) return;
+  const nowHidden = syn.classList.toggle('hidden');
+  btn.textContent = nowHidden ? 'Synopsis ▾' : 'Synopsis ▴';
 }
 
 function toggleVoteCard(id) {
   const maxPicks = votingSession?.votes_per_member || 2;
-  const row = document.querySelector(`.vote-row[data-id="${id}"]`);
-  if (!row) return;
   if (selectedVoteIds.includes(id)) {
     selectedVoteIds = selectedVoteIds.filter(x => x !== id);
-    row.classList.remove('chosen');
   } else if (selectedVoteIds.length < maxPicks) {
-    selectedVoteIds.push(id); row.classList.add('chosen');
+    selectedVoteIds.push(id);
   }
+  // Sync both table rows and mobile cards (both share .vote-row)
   qsa('.vote-row').forEach(r => {
-    r.classList.toggle('locked', !selectedVoteIds.includes(+r.dataset.id) && selectedVoteIds.length >= maxPicks);
+    const rid = +r.dataset.id;
+    r.classList.toggle('chosen', selectedVoteIds.includes(rid));
+    r.classList.toggle('locked', !selectedVoteIds.includes(rid) && selectedVoteIds.length >= maxPicks);
   });
   el('selected-count').textContent = selectedVoteIds.length;
   el('submit-vote-btn').disabled = selectedVoteIds.length !== maxPicks;
