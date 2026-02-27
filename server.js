@@ -689,6 +689,27 @@ app.patch('/api/bookclubs/:clubId/voting/session/:sid/toggle-results', requireSu
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
+// ── Next Meeting ──────────────────────────────────────────────────────────────
+app.get('/api/bookclubs/:clubId/next-meeting', requireClubAccess, async (req, res) => {
+  try {
+    res.json(await db.getNextMeeting(parseInt(req.params.clubId)));
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
+app.patch('/api/bookclubs/:clubId/next-meeting', requireClubAdmin, async (req, res) => {
+  const { book_id, meeting_at, location } = req.body;
+  try {
+    const club = await db.setNextMeeting(
+      parseInt(req.params.clubId),
+      book_id ? parseInt(book_id) : null,
+      meeting_at || null,
+      location   || null
+    );
+    if (!club) return res.status(404).json({ error: 'Not found' });
+    res.json(club);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
 // ── Analytics ─────────────────────────────────────────────────────────────────
 app.get('/api/bookclubs/:clubId/analytics', requireClubAccess, async (req, res) => {
   try {

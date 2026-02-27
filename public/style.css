@@ -472,6 +472,54 @@ tr.inactive td.td-voting { opacity:1; }
 .cover-upload-label { cursor:pointer; position:relative; overflow:hidden; display:inline-flex; }
 .cover-file-input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
 
+/* ── Next Meeting Banner ─────────────────────────────── */
+.next-meeting-banner {
+  background:linear-gradient(135deg, var(--green-light) 0%, #f0faf0 100%);
+  border:2px solid var(--green);
+  border-radius:var(--radius-lg);
+  padding:1rem 1.25rem;
+  margin-bottom:1.25rem;
+  box-shadow:var(--shadow);
+}
+.nm-banner-inner {
+  display:flex;
+  gap:1.5rem;
+  align-items:flex-start;
+  flex-wrap:wrap;
+}
+.nm-book-side {
+  display:flex;
+  gap:.85rem;
+  flex:1;
+  min-width:200px;
+}
+.nm-cover { flex-shrink:0; }
+.nm-cover-img { width:70px; height:105px; object-fit:cover; border-radius:6px; display:block; box-shadow:var(--shadow); }
+.nm-cover-ph { width:70px; height:105px; background:var(--border-soft); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:1.8rem; color:var(--muted); }
+.nm-book-info { display:flex; flex-direction:column; gap:.2rem; }
+.nm-label { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--green); margin-bottom:.15rem; }
+.nm-title { font-size:1.1rem; font-weight:700; line-height:1.25; color:var(--text); }
+.nm-meta { font-size:.82rem; color:var(--muted); }
+.nm-when-side {
+  display:flex;
+  flex-direction:column;
+  gap:.45rem;
+  min-width:190px;
+  padding-left:1rem;
+  border-left:2px solid var(--border-soft);
+}
+.nm-when, .nm-where {
+  display:flex;
+  align-items:flex-start;
+  gap:.4rem;
+  font-size:.88rem;
+  line-height:1.4;
+}
+.nm-icon { flex-shrink:0; }
+/* Form inside Manage tab */
+.nm-form { margin-top:.75rem; }
+.nm-current { background:var(--green-light); border-radius:var(--radius); padding:.55rem .85rem; border:1px solid var(--border-soft); }
+
 /* ── Responsive ──────────────────────────────────────── */
 @media (max-width:768px) {
   /* Global spacing */
@@ -571,6 +619,12 @@ tr.inactive td.td-voting { opacity:1; }
   /* Result rows */
   .result-row { flex-wrap:wrap; }
   .rr-bar-wrap { width:100%; }
+}
+
+/* ── Next Meeting Banner: stack on small screens ─────── */
+@media (max-width:600px) {
+  .nm-banner-inner { flex-direction:column; gap:.85rem; }
+  .nm-when-side { border-left:none; border-top:1px solid var(--border-soft); padding-left:0; padding-top:.65rem; }
 }
 
 /* ── Card view: swap table → cards at 900px (covers tablets + landscape phones) ── */

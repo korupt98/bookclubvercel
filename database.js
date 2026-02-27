@@ -559,6 +559,30 @@ async function getAnalytics(clubId, from, to) {
   };
 }
 
+/* ── Next Meeting ───────────────────────────────────────────────────────────── */
+async function getNextMeeting(clubId) {
+  const { rows } = await pool.query(
+    `SELECT bc.next_meeting_at, bc.next_meeting_location, bc.next_book_id,
+            b.title, b.author, b.genre, b.cover_url, b.page_count, b.release_year,
+            b.description, b.added_by_name, b.added_by_user_id
+     FROM bookclubs bc
+     LEFT JOIN books b ON b.id = bc.next_book_id
+     WHERE bc.id = $1`,
+    [clubId]
+  );
+  return rows[0] || null;
+}
+
+async function setNextMeeting(clubId, bookId, meetingAt, location) {
+  const { rows } = await pool.query(
+    `UPDATE bookclubs
+     SET next_book_id = $2, next_meeting_at = $3, next_meeting_location = $4
+     WHERE id = $1 RETURNING *`,
+    [clubId, bookId || null, meetingAt || null, location || null]
+  );
+  return rows[0] || null;
+}
+
 /* ── Genres ─────────────────────────────────────────────────────────────────── */
 async function getGenres() {
   const { rows } = await pool.query('SELECT * FROM genres ORDER BY name');
@@ -604,6 +628,8 @@ module.exports = {
   getAllSessions, getSessionVoteDetails, deleteVotingSession, deleteVote, toggleResultsVisible,
   // analytics
   getAnalytics,
+  // next meeting
+  getNextMeeting, setNextMeeting,
   // genres
   getGenres, addGenre, updateGenre, deleteGenre,
 };

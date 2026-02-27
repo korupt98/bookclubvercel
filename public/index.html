@@ -214,6 +214,7 @@
 
     <!-- Stats (all logged-in members) -->
     <section id="tab-stats" class="tab-pane active">
+      <div id="next-meeting-banner" class="next-meeting-banner hidden"></div>
       <div class="section-head">
         <h2>Stats <span id="stats-club-label" class="dim"></span></h2>
       </div>
@@ -260,6 +261,38 @@
         <div id="manage-analytics-content"><p class="dim text-center mt-sm">Loading…</p></div>
         <div id="manage-analytics-drilldown" class="analytics-drilldown hidden"></div>
       </div>
+      <div class="card admin-card" id="manage-next-meeting-card">
+        <h3>Next Meeting</h3>
+        <div id="nm-current" class="nm-current hidden"></div>
+        <div class="nm-form">
+          <div class="two-col">
+            <div class="field">
+              <label>Book to Read</label>
+              <select id="nm-book-select"><option value="">— No book selected —</option></select>
+            </div>
+            <div class="field">
+              <label>Location</label>
+              <input type="text" id="nm-location" placeholder="e.g. John's house, Zoom…">
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="field">
+              <label>Date</label>
+              <input type="date" id="nm-date">
+            </div>
+            <div class="field">
+              <label>Time</label>
+              <input type="time" id="nm-time">
+            </div>
+          </div>
+          <div class="row gap-sm mt-sm">
+            <button id="nm-save-btn" class="btn btn-primary btn-sm">Save Next Meeting</button>
+            <button id="nm-clear-btn" class="btn btn-ghost btn-sm">Clear</button>
+          </div>
+          <p id="nm-msg" class="msg hidden"></p>
+        </div>
+      </div>
+
       <div class="card admin-card">
         <h3>Voting</h3>
         <div id="manage-session-status" class="status-box"></div>

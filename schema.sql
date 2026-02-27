@@ -102,6 +102,11 @@ CREATE TABLE IF NOT EXISTS genres (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Next meeting tracking
+ALTER TABLE bookclubs ADD COLUMN IF NOT EXISTS next_book_id          INT REFERENCES books(id) ON DELETE SET NULL;
+ALTER TABLE bookclubs ADD COLUMN IF NOT EXISTS next_meeting_at       TIMESTAMPTZ;
+ALTER TABLE bookclubs ADD COLUMN IF NOT EXISTS next_meeting_location TEXT;
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_genres_name            ON genres(name);
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_token    ON auth_sessions(token);
