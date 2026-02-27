@@ -79,6 +79,9 @@ ALTER TABLE books ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT FAL
 ALTER TABLE voting_sessions ADD COLUMN IF NOT EXISTS votes_per_member  INT     NOT NULL DEFAULT 2;
 ALTER TABLE voting_sessions ADD COLUMN IF NOT EXISTS results_visible   BOOLEAN NOT NULL DEFAULT FALSE;
 
+-- Release year
+ALTER TABLE books ADD COLUMN IF NOT EXISTS release_year INT;
+
 CREATE TABLE IF NOT EXISTS session_books (
   session_id INT NOT NULL REFERENCES voting_sessions(id) ON DELETE CASCADE,
   book_id    INT NOT NULL REFERENCES books(id)           ON DELETE CASCADE,

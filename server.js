@@ -451,7 +451,7 @@ app.get('/api/search', async (req, res) => {
   const { q } = req.query;
   if (!q || q.length < 2) return res.json([]);
   try {
-    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=12&fields=key,title,author_name,cover_i,number_of_pages_median,subject`;
+    const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=12&fields=key,title,author_name,cover_i,number_of_pages_median,subject,first_publish_year`;
     const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
     const data = await r.json();
     res.json((data.docs || []).map(b => ({
@@ -460,6 +460,7 @@ app.get('/api/search', async (req, res) => {
       cover_url:       b.cover_i ? `https://covers.openlibrary.org/b/id/${b.cover_i}-M.jpg` : null,
       open_library_id: b.key || null,
       page_count:      b.number_of_pages_median || null,
+      release_year:    b.first_publish_year || null,
       genre:           extractGenre(b.subject),
     })));
   } catch { res.status(500).json({ error: 'Search failed' }); }
@@ -489,7 +490,7 @@ app.get('/api/bookclubs/:clubId/books', requireClubAccess, async (req, res) => {
 
 app.post('/api/bookclubs/:clubId/books', requireClubAccess, async (req, res) => {
   const clubId = parseInt(req.params.clubId);
-  const { title, author, genre, cover_url, open_library_id, page_count, description,
+  const { title, author, genre, cover_url, open_library_id, page_count, release_year, description,
           submitted_at, selected, selected_at, added_by_name, added_by_user_id } = req.body;
   if (!title?.trim()) return res.status(400).json({ error: 'Title required' });
   try {
@@ -500,7 +501,7 @@ app.post('/api/bookclubs/:clubId/books', requireClubAccess, async (req, res) => 
     const isPrivileged = req.user.role === 'superadmin' || clubRole === 'admin';
     const book = await db.insertBook({
       bookclub_id:      clubId,
-      title, author, genre, cover_url, open_library_id, page_count, description,
+      title, author, genre, cover_url, open_library_id, page_count, release_year, description,
       submitted_at:     submitted_at || null,
       selected:         selected     || false,
       selected_at:      selected_at  || null,
@@ -522,9 +523,9 @@ app.patch('/api/bookclubs/:clubId/books/:id', requireClubAccess, async (req, res
     const isOwner      = book.added_by_user_id === req.user.id;
     if (!isPrivileged && !isOwner)
       return res.status(403).json({ error: 'You can only edit your own books' });
-    const adminFields  = ['title','author','genre','page_count','description','submitted_at',
+    const adminFields  = ['title','author','genre','page_count','release_year','description','submitted_at',
                           'selected','selected_at','added_by_name','added_by_user_id','active_for_voting','cover_url'];
-    const memberFields = ['title','author','genre','page_count','description','active_for_voting','cover_url'];
+    const memberFields = ['title','author','genre','page_count','release_year','description','active_for_voting','cover_url'];
     const allowed = isPrivileged ? adminFields : memberFields;
     const fields = {};
     for (const k of allowed) { if (req.body[k] !== undefined) fields[k] = req.body[k]; }

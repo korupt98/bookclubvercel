@@ -111,6 +111,7 @@
             <th class="th-sort" data-sort="author">Author</th>
             <th>Genre</th>
             <th class="th-sort" data-sort="page_count">Pages</th>
+            <th class="th-sort" data-sort="release_year">Year</th>
             <th>Submitted By</th>
             <th class="th-sort th-sort-desc" data-sort="added_at">Date Added</th>
             <th>In Voting</th>
@@ -121,6 +122,7 @@
           <tbody id="books-tbody"></tbody>
         </table>
       </div>
+      <div id="books-cards" class="books-cards hidden"></div>
       <p id="no-books" class="empty-state hidden">No books yet. Add the first one!</p>
     </section>
 
@@ -163,7 +165,10 @@
             </div>
           </div>
         </div>
-        <div class="field"><label>Page Count</label><input type="number" id="book-page-count" min="1" placeholder="e.g. 320"></div>
+        <div class="two-col">
+          <div class="field"><label>Page Count</label><input type="number" id="book-page-count" min="1" placeholder="e.g. 320"></div>
+          <div class="field"><label>Release Year</label><input type="number" id="book-year" min="1000" max="2030" placeholder="e.g. 2019"></div>
+        </div>
         <div class="field"><label>Genre <span class="hint">(select all that apply)</span></label>
           <div class="genre-picker" id="book-genre-select"></div>
         </div>
@@ -362,6 +367,10 @@
             </div>
           </div>
         </div>
+        <div class="two-col">
+          <div class="field"><label>Page Count</label><input type="number" id="admin-book-page-count" min="1" placeholder="e.g. 320"></div>
+          <div class="field"><label>Release Year</label><input type="number" id="admin-book-year" min="1000" max="2030" placeholder="e.g. 2019"></div>
+        </div>
         <div class="field"><label>Genre</label>
           <div class="genre-picker" id="admin-book-genre-select"></div>
         </div>
@@ -386,7 +395,7 @@
         <table>
           <thead><tr>
             <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th>
-            <th>Pages</th><th>Submitted By</th><th>Submitted</th>
+            <th>Pages</th><th>Year</th><th>Submitted By</th><th>Submitted</th>
             <th>In Voting</th><th>Selected</th><th>Selected Date</th><th>Actions</th>
           </tr></thead>
           <tbody id="admin-books-tbody"></tbody>
@@ -566,7 +575,10 @@
       <div class="field"><label>Date Submitted</label><input type="date" id="edit-submitted-at"></div>
       <div class="field"><label>Date Selected</label><input type="date" id="edit-selected-at"></div>
     </div>
-    <div class="field"><label>Page Count</label><input type="number" id="edit-page-count" min="1"></div>
+    <div class="two-col">
+      <div class="field"><label>Page Count</label><input type="number" id="edit-page-count" min="1"></div>
+      <div class="field"><label>Release Year</label><input type="number" id="edit-year" min="1000" max="2030"></div>
+    </div>
     <div class="field"><label>Description</label><textarea id="edit-description" rows="4"></textarea></div>
     <div class="field">
       <label class="toggle-label"><input type="checkbox" id="edit-active-voting"> Include in Voting</label>
@@ -604,8 +616,10 @@
     <div class="field"><label>Genre <span class="hint">(select all that apply)</span></label>
       <div class="genre-picker" id="member-edit-genre-select"></div>
     </div>
-    <div class="field"><label>Page Count</label>
-      <input type="number" id="member-edit-page-count" min="1"></div>
+    <div class="two-col">
+      <div class="field"><label>Page Count</label><input type="number" id="member-edit-page-count" min="1"></div>
+      <div class="field"><label>Release Year</label><input type="number" id="member-edit-year" min="1000" max="2030"></div>
+    </div>
     <div class="field"><label>Description / Summary</label>
       <textarea id="member-edit-desc" rows="5"></textarea></div>
     <div class="field">

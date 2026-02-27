@@ -259,9 +259,9 @@ async function insertBook(fields) {
   const { rows } = await pool.query(
     `INSERT INTO books
        (bookclub_id, title, author, genre, cover_url, open_library_id,
-        page_count, description, submitted_at, selected, selected_at,
+        page_count, release_year, description, submitted_at, selected, selected_at,
         active_for_voting, added_by_name, added_by_user_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
      RETURNING *`,
     [
       fields.bookclub_id,
@@ -271,6 +271,7 @@ async function insertBook(fields) {
       fields.cover_url        || null,
       fields.open_library_id  || null,
       fields.page_count       || null,
+      fields.release_year     || null,
       fields.description      || null,
       fields.submitted_at     || new Date().toISOString(),
       fields.selected         || false,
@@ -285,7 +286,7 @@ async function insertBook(fields) {
 
 async function updateBook(id, fields) {
   const allowed = [
-    'title','author','genre','page_count','description','submitted_at',
+    'title','author','genre','page_count','release_year','description','submitted_at',
     'selected','selected_at','added_by_name','added_by_user_id','active_for_voting','archived','cover_url',
   ];
   const filtered = {};

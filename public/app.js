@@ -519,7 +519,7 @@ function renderBooksTable() {
     if (sortField === 'added_at') {
       va = new Date(a.submitted_at || a.added_at).getTime();
       vb = new Date(b.submitted_at || b.added_at).getTime();
-    } else if (sortField === 'page_count') {
+    } else if (sortField === 'page_count' || sortField === 'release_year') {
       va = Number(va) || 0; vb = Number(vb) || 0;
     } else {
       va = (va || '').toLowerCase(); vb = (vb || '').toLowerCase();
@@ -537,13 +537,21 @@ function renderBooksTable() {
 
   const tbody = el('books-tbody');
   const wrap  = el('table-wrap');
+  const cards = el('books-cards');
   const empty = el('no-books');
 
-  if (!books.length) { wrap.classList.add('hidden'); empty.classList.remove('hidden'); return; }
-  wrap.classList.remove('hidden'); empty.classList.add('hidden');
+  if (!books.length) {
+    wrap.classList.add('hidden'); cards.classList.add('hidden');
+    empty.classList.remove('hidden'); return;
+  }
+  wrap.classList.remove('hidden'); cards.classList.remove('hidden');
+  empty.classList.add('hidden');
 
   const canAdmin = isClubAdmin(currentClubId);
-  tbody.innerHTML = books.map(b => {
+  let tableRows = '';
+  let cardRows  = '';
+
+  books.forEach(b => {
     const isOwner = b.added_by_user_id === currentUser.id;
     const cover = b.cover_url
       ? `<img class="thumb" src="${b.cover_url}" alt="" onerror="this.outerHTML='<div class=thumb-ph>&#128214;</div>'">`
@@ -567,12 +575,15 @@ function renderBooksTable() {
         ? `<button class="btn btn-ghost btn-xs" onclick="memberArchiveBook(${b.id},false)">Unarchive</button>`
         : `<button class="btn btn-ghost btn-xs" onclick="memberArchiveBook(${b.id},true)">Archive</button>`);
     }
-    return `<tr class="${b.archived ? 'inactive' : ''}">
+
+    // ── Desktop table row ──
+    tableRows += `<tr class="${b.archived ? 'inactive' : ''}">
       <td>${cover}</td>
       <td><strong>${esc(b.title)}</strong></td>
       <td>${esc(b.author || '—')}</td>
       <td>${esc(b.genre  || '—')}</td>
       <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
+      <td>${b.release_year || '—'}</td>
       <td>${esc(b.added_by_name || '—')}</td>
       <td>${fmtDate(b.submitted_at || b.added_at)}</td>
       <td class="td-voting">${votingCell}</td>
@@ -580,7 +591,47 @@ function renderBooksTable() {
       <td>${b.selected_at ? fmtDate(b.selected_at) : '—'}</td>
       <td><div class="action-group">${actions.join('')}</div></td>
     </tr>`;
-  }).join('');
+
+    // ── Mobile card ──
+    const coverCard = b.cover_url
+      ? `<img class="bc-cover-img" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
+      : `<div class="bc-cover-ph">&#128214;</div>`;
+    const metaParts = [
+      b.release_year || null,
+      b.page_count ? `${Number(b.page_count).toLocaleString()} pp` : null,
+      b.genre ? b.genre.split(',')[0].trim() : null,
+    ].filter(Boolean);
+    const votingCardCell = `<input type="checkbox" class="voting-cb" ${b.active_for_voting ? 'checked' : ''} ${canToggleVoting ? '' : 'disabled'}
+      title="${b.archived ? 'Book is archived' : canToggleVoting ? 'Toggle voting' : 'Not your book'}"
+      onchange="memberToggleVoting(${b.id})">`;
+    const hasSynopsis = !!b.description;
+    cardRows += `
+      <div class="book-card ${b.archived ? 'book-card-inactive' : ''}" id="bc-${b.id}">
+        <div class="bc-main">
+          <div class="bc-cover">${coverCard}</div>
+          <div class="bc-info">
+            <div class="bc-title">${esc(b.title)}</div>
+            ${b.author ? `<div class="bc-author">${esc(b.author)}</div>` : ''}
+            ${metaParts.length ? `<div class="bc-meta">${metaParts.join(' · ')}</div>` : ''}
+            <div class="bc-badges">${badge} ${votingCardCell}</div>
+            <div class="bc-submitted">By ${esc(b.added_by_name || '?')} · ${fmtDate(b.submitted_at || b.added_at)}</div>
+            <div class="bc-actions">${actions.join('')}</div>
+            ${hasSynopsis ? `<button class="bc-synopsis-btn" onclick="toggleSynopsis(${b.id},this)">View Synopsis ▾</button>` : ''}
+          </div>
+        </div>
+        ${hasSynopsis ? `<div id="bc-syn-${b.id}" class="bc-synopsis hidden">${esc(b.description)}</div>` : ''}
+      </div>`;
+  });
+
+  tbody.innerHTML = tableRows;
+  cards.innerHTML = cardRows;
+}
+
+function toggleSynopsis(id, btn) {
+  const syn = document.getElementById(`bc-syn-${id}`);
+  if (!syn) return;
+  const nowHidden = syn.classList.toggle('hidden');
+  btn.textContent = nowHidden ? 'View Synopsis ▾' : 'Hide Synopsis ▴';
 }
 
 async function memberToggleVoting(id) {
@@ -615,6 +666,7 @@ function memberOpenOwnEdit(id) {
   el('member-edit-author').value     = b.author || '';
   buildGenreCheckboxes('member-edit-genre-select', b.genre || '');
   el('member-edit-page-count').value = b.page_count || '';
+  el('member-edit-year').value       = b.release_year || '';
   el('member-edit-desc').value       = b.description || '';
   const memVotingCb = el('member-edit-active-voting');
   memVotingCb.checked  = !!b.active_for_voting;
@@ -637,6 +689,7 @@ async function saveMemberEdit() {
       author:      el('member-edit-author').value.trim() || null,
       genre:             getGenreValues('member-edit-genre-select'),
       page_count:        parseInt(el('member-edit-page-count').value) || null,
+      release_year:      parseInt(el('member-edit-year').value) || null,
       description:       el('member-edit-desc').value.trim() || null,
       active_for_voting: el('member-edit-active-voting').checked,
       ...(memberEditCoverUrl !== null && { cover_url: memberEditCoverUrl }),
@@ -676,10 +729,12 @@ async function pickBook(i) {
   el('book-title').value        = pickedBook.title;
   el('book-author').value       = pickedBook.author;
   el('book-page-count').value   = pickedBook.page_count || '';
+  el('book-year').value         = pickedBook.release_year || '';
   el('book-description').value  = '';
   el('preview-title').textContent  = pickedBook.title;
   el('preview-author').textContent = pickedBook.author;
-  el('preview-pages').textContent  = pickedBook.page_count ? `${pickedBook.page_count} pages` : '';
+  const pageParts = [pickedBook.page_count ? `${pickedBook.page_count} pages` : '', pickedBook.release_year || ''].filter(Boolean);
+  el('preview-pages').textContent  = pageParts.join(' · ');
   el('preview-genre').textContent  = '';
   el('preview-desc').textContent   = 'Loading description…';
   const img = el('preview-img');
@@ -754,7 +809,7 @@ function clearPick() {
   pickedBook = null;
   clearUploadedCover('member');
   el('book-title').value = ''; el('book-author').value = '';
-  el('book-page-count').value = '';
+  el('book-page-count').value = ''; el('book-year').value = '';
   el('book-description').value = '';
   buildGenreCheckboxes('book-genre-select', '');
   el('book-search').value = '';
@@ -773,6 +828,7 @@ async function addBook() {
       cover_url:       uploadedCoverUrl || pickedBook?.cover_url || null,
       open_library_id: pickedBook?.open_library_id || null,
       page_count:      parseInt(el('book-page-count').value) || null,
+      release_year:    parseInt(el('book-year').value) || null,
       description:     description || null,
       genre:           genre || null,
     });
@@ -1517,7 +1573,7 @@ function populateSubmitterSelect(selectId) {
 
 function renderAdminBooksTable() {
   const tbody = el('admin-books-tbody');
-  if (!allBooks.length) { tbody.innerHTML = `<tr><td colspan="11" class="empty-state">No books yet.</td></tr>`; return; }
+  if (!allBooks.length) { tbody.innerHTML = `<tr><td colspan="12" class="empty-state">No books yet.</td></tr>`; return; }
   tbody.innerHTML = allBooks.map(b => {
     const cover = b.cover_url
       ? `<img class="thumb" src="${b.cover_url}" alt="" onerror="this.outerHTML='<div class=thumb-ph>&#128214;</div>'">`
@@ -1542,6 +1598,7 @@ function renderAdminBooksTable() {
       <td>${esc(b.author || '—')}</td>
       <td>${esc(b.genre  || '—')}</td>
       <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
+      <td>${b.release_year || '—'}</td>
       <td>${esc(b.added_by_name || '—')}</td>
       <td>${fmtDate(b.submitted_at || b.added_at)}</td>
       <td class="td-voting">${votingCb}</td>
@@ -1581,10 +1638,13 @@ async function adminPickBook(i) {
   el('admin-book-search').value       = '';
   el('admin-book-title').value        = adminPickedBook.title;
   el('admin-book-author').value       = adminPickedBook.author;
+  el('admin-book-page-count').value   = adminPickedBook.page_count || '';
+  el('admin-book-year').value         = adminPickedBook.release_year || '';
   el('admin-book-description').value  = '';
   el('admin-preview-title').textContent  = adminPickedBook.title;
   el('admin-preview-author').textContent = adminPickedBook.author;
-  el('admin-preview-pages').textContent  = adminPickedBook.page_count ? `${adminPickedBook.page_count} pages` : '';
+  const adminPageParts = [adminPickedBook.page_count ? `${adminPickedBook.page_count} pages` : '', adminPickedBook.release_year || ''].filter(Boolean);
+  el('admin-preview-pages').textContent  = adminPageParts.join(' · ');
   el('admin-preview-genre').textContent  = '';
   el('admin-preview-desc').textContent   = '';
   const img = el('admin-preview-img');
@@ -1603,7 +1663,7 @@ async function adminPickBook(i) {
 function adminClearPick() {
   adminPickedBook = null;
   clearUploadedCover('admin');
-  ['admin-book-title','admin-book-author','admin-book-description','admin-book-search'].forEach(id => el(id).value = '');
+  ['admin-book-title','admin-book-author','admin-book-page-count','admin-book-year','admin-book-description','admin-book-search'].forEach(id => el(id).value = '');
   buildGenreCheckboxes('admin-book-genre-select', '');
   el('admin-book-preview').classList.add('hidden');
 }
@@ -1624,7 +1684,8 @@ async function adminAddBook() {
       title, author: author || null, genre: genre || null,
       cover_url:       adminUploadedCoverUrl || adminPickedBook?.cover_url || null,
       open_library_id: adminPickedBook?.open_library_id || null,
-      page_count:      adminPickedBook?.page_count      || null,
+      page_count:      parseInt(el('admin-book-page-count').value) || adminPickedBook?.page_count || null,
+      release_year:    parseInt(el('admin-book-year').value) || null,
       description:     description || null,
       added_by_name:    submitterName,
       added_by_user_id: submitterId,
@@ -1651,6 +1712,7 @@ function openEditBook(id) {
   el('edit-submitted-at').value   = b.submitted_at ? b.submitted_at.slice(0,10) : '';
   el('edit-selected-at').value    = b.selected_at  ? b.selected_at.slice(0,10)  : '';
   el('edit-page-count').value     = b.page_count || '';
+  el('edit-year').value           = b.release_year || '';
   el('edit-description').value    = b.description || '';
   const editVotingCb = el('edit-active-voting');
   editVotingCb.checked  = !!b.active_for_voting;
@@ -1680,6 +1742,7 @@ async function saveEditBook() {
       author:           el('edit-author').value.trim() || null,
       genre:            getGenreValues('edit-genre-select'),
       page_count:       parseInt(el('edit-page-count').value) || null,
+      release_year:     parseInt(el('edit-year').value) || null,
       description:      el('edit-description').value.trim() || null,
       active_for_voting: el('edit-active-voting').checked,
       submitted_at:     el('edit-submitted-at').value ? new Date(el('edit-submitted-at').value).toISOString() : null,
