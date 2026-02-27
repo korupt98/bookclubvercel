@@ -541,10 +541,11 @@ function renderBooksTable() {
   const empty = el('no-books');
 
   if (!books.length) {
-    wrap.classList.add('hidden'); cards.classList.add('hidden');
+    wrap.classList.add('hidden');
+    cards.innerHTML = '';
     empty.classList.remove('hidden'); return;
   }
-  wrap.classList.remove('hidden'); cards.classList.remove('hidden');
+  wrap.classList.remove('hidden');
   empty.classList.add('hidden');
 
   const canAdmin = isClubAdmin(currentClubId);
@@ -577,8 +578,10 @@ function renderBooksTable() {
     }
 
     // ── Desktop table row ──
+    // actions[0] = Details → goes below cover; slice(1) = Edit/Archive → stay in actions col
+    const coverCell = `<div class="cover-cell">${cover}${actions[0]}</div>`;
     tableRows += `<tr class="${b.archived ? 'inactive' : ''}">
-      <td>${cover}</td>
+      <td>${coverCell}</td>
       <td><strong>${esc(b.title)}</strong></td>
       <td>${esc(b.author || '—')}</td>
       <td>${esc(b.genre  || '—')}</td>
@@ -589,7 +592,7 @@ function renderBooksTable() {
       <td class="td-voting">${votingCell}</td>
       <td>${badge}</td>
       <td>${b.selected_at ? fmtDate(b.selected_at) : '—'}</td>
-      <td><div class="action-group">${actions.join('')}</div></td>
+      <td><div class="action-group">${actions.slice(1).join('')}</div></td>
     </tr>`;
 
     // ── Mobile card ──
@@ -907,14 +910,14 @@ function renderVoteGrid() {
     const img = b.cover_url
       ? `<img class="thumb-sm" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
       : `<div class="thumb-sm-ph">&#128214;</div>`;
+    const imgCell = `<div class="cover-cell">${img}<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();showBookDetails(${b.id})">Details</button></div>`;
     tableRows += `<tr class="vote-row" data-id="${b.id}" onclick="toggleVoteCard(${b.id})">
       <td class="vote-check-cell"><span class="vote-check-icon">&#10003;</span></td>
-      <td>${img}</td>
+      <td>${imgCell}</td>
       <td><strong>${esc(b.title)}</strong></td>
       <td>${esc(b.author || '—')}</td>
       <td>${esc(b.genre  || '—')}</td>
       <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
-      <td><button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();showBookDetails(${b.id})">Details</button></td>
     </tr>`;
 
     const cardImg = b.cover_url
@@ -950,7 +953,7 @@ function renderVoteGrid() {
       <table class="vote-table">
         <thead><tr>
           <th style="width:32px"></th>
-          <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th><th>Pages</th><th></th>
+          <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th><th>Pages</th>
         </tr></thead>
         <tbody>${tableRows}</tbody>
       </table>

@@ -337,6 +337,9 @@ tr.inactive td.td-voting { opacity:1; }
 .book-card { background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
 .book-card-inactive { opacity:.55; }
 .bc-main { display:flex; gap:.7rem; padding:.7rem; }
+/* Cover column: image stacked above Details button (tables + mobile cards) */
+.cover-cell { display:flex; flex-direction:column; align-items:center; gap:.3rem; }
+.cover-cell .btn { font-size:.72rem; padding:.18rem .35rem; width:100%; justify-content:center; }
 .bc-cover { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:.3rem; }
 .bc-cover-img { width:62px; height:93px; object-fit:cover; border-radius:4px; display:block; }
 .bc-cover-ph { width:62px; height:93px; background:var(--border-soft); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:var(--muted); }
@@ -498,13 +501,7 @@ tr.inactive td.td-voting { opacity:1; }
   /* Section heads */
   .section-head { flex-direction:column; align-items:flex-start; gap:.5rem; }
 
-  /* Member books: hide scrollable table, show cards */
-  #tab-books .table-scroll { display:none; }
-  .books-cards { display:flex; }
-
-  /* Vote tab: hide scrollable table, show vote cards */
-  #vote-grid .table-scroll { display:none; }
-  .vote-cards { display:flex; }
+  /* (table→card swap moved to 900px breakpoint below) */
 
   /* Tables — bleed full width (admin / other tables still scroll) */
   .table-scroll { margin:0 -.75rem; border-radius:0; box-shadow:none;
@@ -575,4 +572,12 @@ tr.inactive td.td-voting { opacity:1; }
   /* Result rows */
   .result-row { flex-wrap:wrap; }
   .rr-bar-wrap { width:100%; }
+}
+
+/* ── Card view: swap table → cards at 900px (covers tablets + landscape phones) ── */
+@media (max-width:900px) {
+  #tab-books .table-scroll { display:none; }
+  .books-cards { display:flex; }
+  #vote-grid .table-scroll { display:none; }
+  .vote-cards { display:flex; }
 }
