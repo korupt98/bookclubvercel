@@ -639,7 +639,7 @@ app.get('/api/bookclubs/:clubId/voting/results/:sid', requireClubAccess, async (
     if (!session) return res.status(404).json({ error: 'Not found' });
     const clubRole    = await db.getClubRole(req.user.id, parseInt(req.params.clubId));
     const isPrivileged = req.user.role === 'superadmin' || clubRole === 'admin';
-    if (!session.is_closed && !isPrivileged) {
+    if (!session.is_closed && !isPrivileged && !session.results_visible) {
       return res.status(403).json({ error: 'Results hidden until voting closes' });
     }
     res.json(await db.getResults(session.id, parseInt(req.params.clubId)));
@@ -670,6 +670,22 @@ app.get('/api/bookclubs/:clubId/voting/sessions/:sid/votes', requireClubAdmin, a
 app.delete('/api/bookclubs/:clubId/voting/sessions/:sid', requireClubAdmin, async (req, res) => {
   try { await db.deleteVotingSession(parseInt(req.params.sid)); res.json({ ok: true }); }
   catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
+// Remove one member's vote (superadmin only)
+app.delete('/api/bookclubs/:clubId/voting/sessions/:sid/votes/:voteId', requireSuperAdmin, async (req, res) => {
+  try { await db.deleteVote(parseInt(req.params.voteId)); res.json({ ok: true }); }
+  catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
+// Toggle live results visibility for all members (superadmin only)
+app.patch('/api/bookclubs/:clubId/voting/session/:sid/toggle-results', requireSuperAdmin, async (req, res) => {
+  try {
+    const { visible } = req.body;
+    const s = await db.toggleResultsVisible(parseInt(req.params.sid), !!visible);
+    if (!s) return res.status(404).json({ error: 'Not found' });
+    res.json(s);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 // ── Analytics ─────────────────────────────────────────────────────────────────

@@ -69,11 +69,11 @@ header .btn-ghost.btn-sm:hover { background:rgba(255,255,255,.15); }
 .club-switcher select option, .club-select-input option { background:var(--green-dark); }
 
 /* ── Tab Bar ─────────────────────────────────────────── */
-.tab-bar { background:var(--surface); border-bottom:2px solid var(--border); position:fixed; top:56px; left:0; right:0; z-index:40; }
-.tab-bar-inner { max-width:1300px; margin:0 auto; padding:0 1.5rem; display:flex; gap:.25rem; }
-.tab { padding:.7rem 1.2rem; border:none; background:none; font:inherit; font-size:.9rem; color:var(--muted); cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px; transition:color .15s,border-color .15s; }
-.tab:hover { color:var(--green); }
-.tab.active { color:var(--green); border-bottom-color:var(--green); font-weight:600; }
+.tab-bar { background:var(--surface); border-bottom:2px solid var(--border); position:fixed; top:56px; left:0; right:0; z-index:40; padding:.4rem 0; }
+.tab-bar-inner { max-width:1300px; margin:0 auto; padding:0 1rem; display:flex; gap:.3rem; align-items:center; }
+.tab { padding:.42rem 1.1rem; border:none; background:transparent; font:inherit; font-size:.9rem; color:var(--text); cursor:pointer; border-radius:20px; font-weight:500; white-space:nowrap; transition:background .15s,color .15s; }
+.tab:hover { background:var(--green-light); color:var(--green); }
+.tab.active { background:var(--green); color:#fff; font-weight:600; }
 
 /* ── Main ────────────────────────────────────────────── */
 .main-content { max-width:1300px; margin:0 auto; padding:100px 1.5rem 2rem; }
@@ -450,7 +450,7 @@ tr.inactive td.td-voting { opacity:1; }
   .tab-bar { top:48px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
   .tab-bar::-webkit-scrollbar { display:none; }
   .tab-bar-inner { max-width:none; margin:0; padding:0 .5rem; width:max-content; min-width:100%; gap:0; }
-  .tab { padding:.6rem .8rem; font-size:.82rem; white-space:nowrap; flex-shrink:0; }
+  .tab { padding:.38rem .85rem; font-size:.82rem; flex-shrink:0; }
 
   /* Layout grids */
   .two-col, .three-col, .admin-two-col { grid-template-columns:1fr; }

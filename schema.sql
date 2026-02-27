@@ -76,7 +76,8 @@ ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
 ALTER TABLE books ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- Configurable voting sessions
-ALTER TABLE voting_sessions ADD COLUMN IF NOT EXISTS votes_per_member INT NOT NULL DEFAULT 2;
+ALTER TABLE voting_sessions ADD COLUMN IF NOT EXISTS votes_per_member  INT     NOT NULL DEFAULT 2;
+ALTER TABLE voting_sessions ADD COLUMN IF NOT EXISTS results_visible   BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS session_books (
   session_id INT NOT NULL REFERENCES voting_sessions(id) ON DELETE CASCADE,

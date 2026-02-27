@@ -808,7 +808,18 @@ async function renderVoteTab() {
     return;
   }
   const { has_voted } = await api(`/api/bookclubs/${currentClubId}/voting/check-voted`);
-  if (has_voted) { el('vote-already-voted').classList.remove('hidden'); return; }
+  if (has_voted) {
+    el('vote-already-voted').classList.remove('hidden');
+    if (votingSession.results_visible) {
+      await showPublicResults();
+      el('results-area').classList.remove('hidden');
+    }
+    return;
+  }
+  if (votingSession.results_visible) {
+    await showPublicResults();
+    el('results-area').classList.remove('hidden');
+  }
   const picks = votingSession.votes_per_member || 2;
   el('vote-pick-count').textContent = picks;
   el('vote-pick-max').textContent   = picks;
@@ -1195,9 +1206,10 @@ async function toggleVoteDetails(ctx, sessionId, clubId, btn) {
   btn.textContent = 'Loading…';
   try {
     const votes = await api(`/api/bookclubs/${clubId}/voting/sessions/${sessionId}/votes`);
+    const canRemove = isSuperAdmin();
     panel.innerHTML = votes.length
-      ? `<table class="sh-votes-table"><thead><tr><th>Member</th><th>Books Chosen</th></tr></thead><tbody>` +
-        votes.map(v => `<tr><td>${esc(v.voter_name)}</td><td>${v.book_titles.map(t => esc(t)).join(', ')}</td></tr>`).join('') +
+      ? `<table class="sh-votes-table"><thead><tr><th>Member</th><th>Books Chosen</th>${canRemove ? '<th></th>' : ''}</tr></thead><tbody>` +
+        votes.map(v => `<tr id="vrow-${v.vote_id}"><td>${esc(v.voter_name)}</td><td>${v.book_titles.map(t => esc(t)).join(', ')}</td>${canRemove ? `<td><button class="btn btn-danger btn-xs" onclick="removeVote('${ctx}',${sessionId},${clubId},${v.vote_id},'${esc(v.voter_name)}',this)">Remove</button></td>` : ''}</tr>`).join('') +
         `</tbody></table>`
       : `<p class="dim" style="padding:.5rem 0">No votes recorded.</p>`;
     panel.classList.remove('hidden');
@@ -1211,6 +1223,17 @@ async function deleteSessionHistory(ctx, sessionId, clubId) {
     await api(`/api/bookclubs/${clubId}/voting/sessions/${sessionId}`, 'DELETE');
     el(`sh-${ctx}-${sessionId}`)?.remove();
   } catch (e) { alert(e.message); }
+}
+
+async function removeVote(ctx, sessionId, clubId, voteId, voterName, btn) {
+  if (!confirm(`Remove ${voterName}'s vote? They will be able to vote again.`)) return;
+  btn.disabled = true;
+  try {
+    await api(`/api/bookclubs/${clubId}/voting/sessions/${sessionId}/votes/${voteId}`, 'DELETE');
+    document.getElementById(`vrow-${voteId}`)?.remove();
+    if (ctx === 'admin') { await loadAdminResults(); }
+    else { await loadManageResults(); }
+  } catch (e) { alert(e.message); btn.disabled = false; }
 }
 
 /* ── Book Details Modal ──────────────────────────────── */
@@ -1719,6 +1742,19 @@ function renderAdminVotingPanel() {
     statusBox.textContent   = `Voting open — started ${fmtDate(votingSession.created_at)}`;
     createBtn.classList.add('hidden'); closeBtn.classList.remove('hidden');
     resultsCard.classList.remove('hidden');
+    if (isSuperAdmin()) {
+      const toggleBtn = document.getElementById('admin-toggle-results-btn') || (() => {
+        const b = document.createElement('button');
+        b.id = 'admin-toggle-results-btn';
+        b.className = 'btn btn-ghost btn-sm';
+        closeBtn.parentNode.insertBefore(b, closeBtn.nextSibling);
+        return b;
+      })();
+      const vis = !!votingSession.results_visible;
+      toggleBtn.textContent = vis ? 'Hide Results from Members' : 'Show Live Results to All';
+      toggleBtn.className   = vis ? 'btn btn-secondary btn-sm' : 'btn btn-ghost btn-sm';
+      toggleBtn.onclick     = adminToggleResults;
+    }
   } else {
     statusBox.style.cssText = 'background:#dbeafe;color:#1e40af';
     statusBox.textContent   = `Voting closed on ${fmtDate(votingSession.closed_at)}`;
@@ -1743,8 +1779,18 @@ async function adminCloseSession() {
   if (!votingSession || !confirm('Close voting and reveal results to all members?')) return;
   try {
     votingSession = await api(`/api/bookclubs/${adminClubId}/voting/session/${votingSession.id}/close`, 'PATCH');
+    document.getElementById('admin-toggle-results-btn')?.remove();
     renderAdminVotingPanel();
     await loadAdminResults();
+  } catch (e) { alert(e.message); }
+}
+
+async function adminToggleResults() {
+  if (!votingSession) return;
+  const newVisible = !votingSession.results_visible;
+  try {
+    votingSession = await api(`/api/bookclubs/${adminClubId}/voting/session/${votingSession.id}/toggle-results`, 'PATCH', { visible: newVisible });
+    renderAdminVotingPanel();
   } catch (e) { alert(e.message); }
 }
 

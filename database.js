@@ -468,16 +468,28 @@ async function getAllSessions(clubId) {
 
 async function getSessionVoteDetails(sessionId) {
   const { rows } = await pool.query(
-    `SELECT v.voter_name, array_agg(b.title ORDER BY ve.id) AS book_titles
+    `SELECT v.id AS vote_id, v.voter_user_id, v.voter_name, array_agg(b.title ORDER BY ve.id) AS book_titles
      FROM votes v
      JOIN vote_entries ve ON ve.vote_id = v.id
      JOIN books b ON b.id = ve.book_id
      WHERE v.session_id = $1
-     GROUP BY v.id, v.voter_name
+     GROUP BY v.id, v.voter_user_id, v.voter_name
      ORDER BY v.voter_name`,
     [sessionId]
   );
   return rows;
+}
+
+async function deleteVote(voteId) {
+  await pool.query('DELETE FROM votes WHERE id = $1', [voteId]);
+}
+
+async function toggleResultsVisible(sessionId, visible) {
+  const { rows } = await pool.query(
+    'UPDATE voting_sessions SET results_visible = $1 WHERE id = $2 RETURNING *',
+    [visible, sessionId]
+  );
+  return rows[0] || null;
 }
 
 async function deleteVotingSession(sessionId) {
@@ -588,7 +600,7 @@ module.exports = {
   // voting
   getLatestSession, getOpenSession, insertSession, closeSession, getVotingSession,
   hasVoted, insertVote, getResults,
-  getAllSessions, getSessionVoteDetails, deleteVotingSession,
+  getAllSessions, getSessionVoteDetails, deleteVotingSession, deleteVote, toggleResultsVisible,
   // analytics
   getAnalytics,
   // genres
