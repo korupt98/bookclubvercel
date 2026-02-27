@@ -470,6 +470,38 @@
 
     <!-- Analytics -->
     <section id="admin-tab-analytics" class="tab-pane active">
+      <div id="admin-next-meeting-banner" class="next-meeting-banner hidden"></div>
+      <div class="card admin-card mb-lg">
+        <h3>Next Meeting</h3>
+        <div id="admin-nm-current" class="nm-current hidden"></div>
+        <div class="nm-form">
+          <div class="two-col">
+            <div class="field">
+              <label>Book to Read</label>
+              <select id="admin-nm-book-select"><option value="">— No book selected —</option></select>
+            </div>
+            <div class="field">
+              <label>Location</label>
+              <input type="text" id="admin-nm-location" placeholder="e.g. John's house, Zoom…">
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="field">
+              <label>Date</label>
+              <input type="date" id="admin-nm-date">
+            </div>
+            <div class="field">
+              <label>Time</label>
+              <input type="time" id="admin-nm-time">
+            </div>
+          </div>
+          <div class="row gap-sm mt-sm">
+            <button id="admin-nm-save-btn" class="btn btn-primary btn-sm">Save Next Meeting</button>
+            <button id="admin-nm-clear-btn" class="btn btn-ghost btn-sm">Clear</button>
+          </div>
+          <p id="admin-nm-msg" class="msg hidden"></p>
+        </div>
+      </div>
       <div class="section-head">
         <h2>Analytics <span id="analytics-club-label" class="dim"></span></h2>
       </div>

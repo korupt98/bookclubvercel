@@ -526,8 +526,8 @@ function formatMeetingDate(iso) {
        + ' at ' + d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
 }
 
-function renderNextMeetingBanner(data) {
-  const banner = el('next-meeting-banner');
+function renderNextMeetingBanner(data, targetId = 'next-meeting-banner') {
+  const banner = el(targetId);
   if (!banner) return;
   const hasBook    = data?.title;
   const hasDate    = data?.next_meeting_at;
@@ -637,6 +637,99 @@ async function clearNextMeeting() {
     el('nm-time').value        = '';
     el('nm-current').classList.add('hidden');
     renderNextMeetingBanner(null);
+    msg.textContent = 'Cleared.';
+    msg.className = 'msg msg-success';
+    setTimeout(() => msg.classList.add('hidden'), 2000);
+  } catch (e) {
+    msg.textContent = e.message || 'Error clearing';
+    msg.className = 'msg msg-error';
+  }
+}
+
+/* ── Next Meeting — Admin View ───────────────────────────────────────────────── */
+async function loadAdminNextMeeting() {
+  if (!adminClubId) return;
+  try {
+    const data = await api(`/api/bookclubs/${adminClubId}/next-meeting`);
+    renderNextMeetingBanner(data, 'admin-next-meeting-banner');
+  } catch { renderNextMeetingBanner(null, 'admin-next-meeting-banner'); }
+}
+
+async function loadAdminNextMeetingForm() {
+  if (!adminClubId) return;
+  // Populate book dropdown from admin books state (loaded in loadAdminBooks / loadAnalytics)
+  const books = _aState.admin.books.filter(b => !b.archived);
+  const sel = el('admin-nm-book-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— No book selected —</option>' +
+    books.map(b => `<option value="${b.id}">${esc(b.title)}${b.author ? ' — ' + esc(b.author) : ''}</option>`).join('');
+
+  try {
+    const data = await api(`/api/bookclubs/${adminClubId}/next-meeting`);
+    if (data?.next_book_id) sel.value = data.next_book_id;
+    if (data?.next_meeting_location) el('admin-nm-location').value = data.next_meeting_location;
+    if (data?.next_meeting_at) {
+      const d = new Date(data.next_meeting_at);
+      el('admin-nm-date').value = d.toISOString().slice(0, 10);
+      el('admin-nm-time').value = d.toTimeString().slice(0, 5);
+    } else {
+      el('admin-nm-date').value = '';
+      el('admin-nm-time').value = '';
+    }
+    const cur = el('admin-nm-current');
+    if (data?.next_meeting_at || data?.title || data?.next_meeting_location) {
+      const parts = [];
+      if (data.title)                parts.push(`<strong>${esc(data.title)}</strong>`);
+      if (data.next_meeting_at)      parts.push(formatMeetingDate(data.next_meeting_at));
+      if (data.next_meeting_location) parts.push(esc(data.next_meeting_location));
+      cur.innerHTML = `<p class="dim" style="margin:0 0 .75rem">Current: ${parts.join(' · ')}</p>`;
+      cur.classList.remove('hidden');
+    } else {
+      cur.classList.add('hidden');
+    }
+  } catch { /* no-op */ }
+}
+
+async function saveAdminNextMeeting() {
+  const clubId   = adminClubId;
+  const bookId   = el('admin-nm-book-select').value || null;
+  const location = el('admin-nm-location').value.trim() || null;
+  const dateVal  = el('admin-nm-date').value;
+  const timeVal  = el('admin-nm-time').value || '00:00';
+  const meetingAt = dateVal ? new Date(`${dateVal}T${timeVal}`).toISOString() : null;
+  const msg = el('admin-nm-msg');
+  msg.className = 'msg hidden';
+  try {
+    await api(`/api/bookclubs/${clubId}/next-meeting`, {
+      method: 'PATCH',
+      body: JSON.stringify({ book_id: bookId ? parseInt(bookId) : null, meeting_at: meetingAt, location }),
+    });
+    msg.textContent = 'Saved!';
+    msg.className = 'msg msg-success';
+    setTimeout(() => msg.classList.add('hidden'), 2500);
+    await loadAdminNextMeeting();
+    await loadAdminNextMeetingForm();
+  } catch (e) {
+    msg.textContent = e.message || 'Error saving';
+    msg.className = 'msg msg-error';
+  }
+}
+
+async function clearAdminNextMeeting() {
+  const clubId = adminClubId;
+  const msg = el('admin-nm-msg');
+  msg.className = 'msg hidden';
+  try {
+    await api(`/api/bookclubs/${clubId}/next-meeting`, {
+      method: 'PATCH',
+      body: JSON.stringify({ book_id: null, meeting_at: null, location: null }),
+    });
+    el('admin-nm-book-select').value = '';
+    el('admin-nm-location').value   = '';
+    el('admin-nm-date').value        = '';
+    el('admin-nm-time').value        = '';
+    el('admin-nm-current').classList.add('hidden');
+    renderNextMeetingBanner(null, 'admin-next-meeting-banner');
     msg.textContent = 'Cleared.';
     msg.className = 'msg msg-success';
     setTimeout(() => msg.classList.add('hidden'), 2000);
@@ -1585,6 +1678,8 @@ function setupAdminListeners() {
   el('show-admin-add-book-btn').addEventListener('click', () => el('admin-add-book-form').classList.toggle('hidden'));
   el('admin-cancel-add-book-btn').addEventListener('click', () => el('admin-add-book-form').classList.add('hidden'));
   el('admin-add-book-btn').addEventListener('click', adminAddBook);
+  el('admin-nm-save-btn').addEventListener('click', saveAdminNextMeeting);
+  el('admin-nm-clear-btn').addEventListener('click', clearAdminNextMeeting);
   el('admin-create-session-btn').addEventListener('click', adminCreateSession);
   el('admin-close-session-btn').addEventListener('click', adminCloseSession);
   el('analytics-run-btn').addEventListener('click', loadAnalytics);
@@ -2272,7 +2367,11 @@ async function loadAnalyticsCtx(ctx) {
   } catch { el(contentId).innerHTML = `<p class="dim">Error loading analytics.</p>`; }
 }
 
-function loadAnalytics()       { return loadAnalyticsCtx('admin'); }
+async function loadAnalytics() {
+  await loadAnalyticsCtx('admin');
+  await loadAdminNextMeeting();
+  await loadAdminNextMeetingForm();
+}
 function loadManageAnalytics() { return loadAnalyticsCtx('manage'); }
 function loadMemberStats()     { return loadAnalyticsCtx('stats'); }
 
