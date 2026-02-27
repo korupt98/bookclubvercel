@@ -56,7 +56,7 @@ body { font-family: Georgia,'Times New Roman',serif; background:var(--bg); color
 .login-card > .dim { margin-bottom:1.5rem; }
 
 /* ── Header ─────────────────────────────────────────── */
-header { background:var(--green); color:#fff; padding:.85rem 1.5rem; position:sticky; top:0; z-index:50; box-shadow:0 2px 8px rgba(0,0,0,.2); }
+header { background:var(--green); color:#fff; padding:.85rem 1.5rem; position:fixed; top:0; left:0; right:0; z-index:50; box-shadow:0 2px 8px rgba(0,0,0,.2); }
 .header-inner { max-width:1300px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; gap:1rem; }
 .header-left  { display:flex; align-items:center; gap:1rem; }
 .header-right { display:flex; align-items:center; gap:.75rem; font-size:.9rem; }
@@ -69,14 +69,15 @@ header .btn-ghost.btn-sm:hover { background:rgba(255,255,255,.15); }
 .club-switcher select option, .club-select-input option { background:var(--green-dark); }
 
 /* ── Tab Bar ─────────────────────────────────────────── */
-.tab-bar { background:var(--surface); border-bottom:2px solid var(--border); position:sticky; top:56px; z-index:40; }
+.tab-bar { background:var(--surface); border-bottom:2px solid var(--border); position:fixed; top:56px; left:0; right:0; z-index:40; }
 .tab-bar-inner { max-width:1300px; margin:0 auto; padding:0 1.5rem; display:flex; gap:.25rem; }
 .tab { padding:.7rem 1.2rem; border:none; background:none; font:inherit; font-size:.9rem; color:var(--muted); cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px; transition:color .15s,border-color .15s; }
 .tab:hover { color:var(--green); }
 .tab.active { color:var(--green); border-bottom-color:var(--green); font-weight:600; }
 
 /* ── Main ────────────────────────────────────────────── */
-.main-content { max-width:1300px; margin:0 auto; padding:2rem 1.5rem; }
+.main-content { max-width:1300px; margin:0 auto; padding:100px 1.5rem 2rem; }
+#public-home .main-content { padding-top:68px; }
 .tab-pane  { display:none; }
 .tab-pane.active { display:block; }
 .tab-pane > h2 { margin-bottom:1.25rem; color:var(--green); }
@@ -212,7 +213,7 @@ tr.inactive td.td-voting { opacity:1; }
 /* ── Book Details Modal ──────────────────────────────── */
 .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:200; align-items:center; justify-content:center; padding:1rem; }
 .modal.open { display:flex; }
-.modal-box { background:var(--surface); padding:2rem; border-radius:var(--radius-lg); width:min(460px,100%); box-shadow:var(--shadow-md); }
+.modal-box { background:var(--surface); padding:2rem; border-radius:var(--radius-lg); width:min(460px,100%); box-shadow:var(--shadow-md); max-height:90vh; overflow-y:auto; }
 .modal-wide { width:min(700px,100%); }
 .modal-box h2 { color:var(--green); margin-bottom:.75rem; }
 .detail-header { display:flex; gap:1.25rem; margin-bottom:1.25rem; }
@@ -435,7 +436,8 @@ tr.inactive td.td-voting { opacity:1; }
 @media (max-width:768px) {
   /* Global spacing */
   body { font-size:14px; }
-  .main-content { padding:1rem .75rem; }
+  .main-content { padding:88px .75rem 1rem; }
+  #public-home .main-content { padding-top:52px; }
 
   /* Header */
   header { padding:.6rem .85rem; }
@@ -445,7 +447,7 @@ tr.inactive td.td-voting { opacity:1; }
   #member-welcome { display:none; }
 
   /* Tab bar — horizontal scroll */
-  .tab-bar { overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .tab-bar { top:48px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
   .tab-bar::-webkit-scrollbar { display:none; }
   .tab-bar-inner { max-width:none; margin:0; padding:0 .5rem; width:max-content; min-width:100%; gap:0; }
   .tab { padding:.6rem .8rem; font-size:.82rem; white-space:nowrap; flex-shrink:0; }

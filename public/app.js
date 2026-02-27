@@ -816,11 +816,6 @@ async function renderVoteTab() {
   const eligibleBooks = sessionBookIds.length
     ? allBooks.filter(b => sessionBookIds.includes(b.id) && !b.archived)
     : allBooks.filter(b => b.active_for_voting && !b.selected && !b.archived);
-  const myBooks = eligibleBooks.filter(b => b.added_by_user_id === currentUser.id);
-  if (!myBooks.length) {
-    el('vote-no-books').classList.remove('hidden');
-    return;
-  }
   selectedVoteIds = [];
   el('selected-count').textContent = '0';
   el('submit-vote-btn').disabled = true;
