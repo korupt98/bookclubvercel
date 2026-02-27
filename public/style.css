@@ -69,14 +69,14 @@ header .btn-ghost.btn-sm:hover { background:rgba(255,255,255,.15); }
 .club-switcher select option, .club-select-input option { background:var(--green-dark); }
 
 /* ── Tab Bar ─────────────────────────────────────────── */
-.tab-bar { background:var(--surface); border-bottom:2px solid var(--border); position:fixed; top:56px; left:0; right:0; z-index:40; padding:.4rem 0; }
+.tab-bar { background:var(--surface); border-bottom:2px solid var(--border); position:fixed; top:56px; left:0; right:0; z-index:40; padding:.65rem 0; }
 .tab-bar-inner { max-width:1300px; margin:0 auto; padding:0 1rem; display:flex; gap:.3rem; align-items:center; }
 .tab { padding:.42rem 1.1rem; border:none; background:transparent; font:inherit; font-size:.9rem; color:var(--text); cursor:pointer; border-radius:20px; font-weight:500; white-space:nowrap; transition:background .15s,color .15s; }
 .tab:hover { background:var(--green-light); color:var(--green); }
 .tab.active { background:var(--green); color:#fff; font-weight:600; }
 
 /* ── Main ────────────────────────────────────────────── */
-.main-content { max-width:1300px; margin:0 auto; padding:100px 1.5rem 2rem; }
+.main-content { max-width:1300px; margin:0 auto; padding:122px 1.5rem 2rem; }
 #public-home .main-content { padding-top:68px; }
 .tab-pane  { display:none; }
 .tab-pane.active { display:block; }
@@ -465,10 +465,10 @@ tr.inactive td.td-voting { opacity:1; }
   header h1 { font-size:1.1rem; }
   #member-welcome { display:none; }
 
-  /* Tab bar — horizontal scroll */
-  .tab-bar { top:48px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
-  .tab-bar::-webkit-scrollbar { display:none; }
-  .tab-bar-inner { max-width:none; margin:0; padding:0 .5rem; width:max-content; min-width:100%; gap:0; }
+  /* Tab bar — horizontal scroll (overflow on inner, not the fixed element — iOS Safari fix) */
+  .tab-bar { top:48px; padding:.4rem 0; }
+  .tab-bar-inner { max-width:none; margin:0; padding:0 .5rem; width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; gap:0; }
+  .tab-bar-inner::-webkit-scrollbar { display:none; }
   .tab { padding:.38rem .85rem; font-size:.82rem; flex-shrink:0; }
 
   /* Layout grids */
@@ -523,7 +523,7 @@ tr.inactive td.td-voting { opacity:1; }
 }
 
 @media (max-width:480px) {
-  .main-content { padding:.75rem .6rem; }
+  .main-content { padding:88px .6rem 1rem; }
   .table-scroll { margin:0 -.6rem; }
 
   /* Filter bar — stack vertically */
