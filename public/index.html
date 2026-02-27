@@ -13,7 +13,10 @@
   <header>
     <div class="header-inner">
       <h1>Book Club</h1>
-      <button id="public-signin-btn" class="btn btn-ghost btn-sm">Sign In</button>
+      <div class="header-right">
+        <button id="public-quick-signin-btn" class="btn btn-ghost btn-sm">Quick Sign In</button>
+        <button id="public-signin-btn" class="btn btn-ghost btn-sm">Sign In</button>
+      </div>
     </div>
   </header>
   <main class="main-content">
@@ -41,7 +44,14 @@
     <div class="divider"><span>or</span></div>
     <div id="google-signin-btn"></div>
     <button id="login-back-btn" class="btn btn-ghost btn-full mt-sm">← Back</button>
-    <div class="divider"><span>or quick sign in</span></div>
+  </div>
+</div>
+
+<!-- ══ QUICK LOGIN ═════════════════════════════════════════════════════════════ -->
+<div id="quick-login-page" class="hidden">
+  <div class="login-card">
+    <h1>Book Club</h1>
+    <p class="dim">Quick Sign In — select your club and name</p>
     <div class="field">
       <label>Club</label>
       <select id="quick-club-select">
@@ -54,8 +64,9 @@
         <option value="">— select name —</option>
       </select>
     </div>
-    <button id="quick-signin-btn" class="btn btn-secondary btn-full" disabled>Quick Sign In</button>
+    <button id="quick-signin-btn" class="btn btn-primary btn-full" disabled>Quick Sign In</button>
     <p id="quick-error" class="msg msg-error hidden"></p>
+    <button id="quick-back-btn" class="btn btn-ghost btn-full mt-sm">← Back</button>
   </div>
 </div>
 

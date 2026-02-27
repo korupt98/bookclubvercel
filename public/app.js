@@ -80,6 +80,7 @@ async function init() {
   // Show public home while loading
   el('public-home').classList.remove('hidden');
   el('login-page').classList.add('hidden');
+  el('quick-login-page').classList.add('hidden');
   el('member-app').classList.add('hidden');
   el('admin-app').classList.add('hidden');
 
@@ -150,7 +151,16 @@ async function handleGoogleLogin(response) {
 /* ── Auth ───────────────────────────────────────────────────────────────────── */
 function showLogin() {
   el('public-home').classList.add('hidden');
+  el('quick-login-page').classList.add('hidden');
   el('login-page').classList.remove('hidden');
+  el('member-app').classList.add('hidden');
+  el('admin-app').classList.add('hidden');
+}
+
+function showQuickLogin() {
+  el('public-home').classList.add('hidden');
+  el('login-page').classList.add('hidden');
+  el('quick-login-page').classList.remove('hidden');
   el('member-app').classList.add('hidden');
   el('admin-app').classList.add('hidden');
   populateQuickClubs();
@@ -180,8 +190,13 @@ async function fetchMe() {
 }
 
 el('public-signin-btn').addEventListener('click', showLogin);
+el('public-quick-signin-btn').addEventListener('click', showQuickLogin);
 el('login-back-btn').addEventListener('click', () => {
   el('login-page').classList.add('hidden');
+  el('public-home').classList.remove('hidden');
+});
+el('quick-back-btn').addEventListener('click', () => {
+  el('quick-login-page').classList.add('hidden');
   el('public-home').classList.remove('hidden');
 });
 el('login-btn').addEventListener('click', doLogin);
@@ -378,6 +393,7 @@ function collapsePublicClub(clubId) { _expandedClubs.delete(clubId); renderPubli
 function showMember() {
   el('public-home').classList.add('hidden');
   el('login-page').classList.add('hidden');
+  el('quick-login-page').classList.add('hidden');
   el('admin-app').classList.add('hidden');
   el('member-app').classList.remove('hidden');
   el('member-welcome').textContent = `Welcome, ${currentUser.name}`;
@@ -1373,6 +1389,7 @@ async function showAdmin() {
   sessionStorage.removeItem('bc_member_view');
   el('public-home').classList.add('hidden');
   el('login-page').classList.add('hidden');
+  el('quick-login-page').classList.add('hidden');
   el('member-app').classList.add('hidden');
   el('admin-app').classList.remove('hidden');
   setupAdminTabs();
