@@ -322,7 +322,7 @@ tr.inactive td.td-voting { opacity:1; }
 .vote-card.locked:not(.chosen) button { pointer-events:all; }
 .vc-main { display:flex; gap:.65rem; padding:.7rem; }
 .vc-check { display:flex; align-items:center; justify-content:center; width:22px; flex-shrink:0; }
-.vc-cover { flex-shrink:0; }
+.vc-cover { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:.3rem; }
 .vc-cover-img { width:55px; height:82px; object-fit:cover; border-radius:4px; display:block; }
 .vc-cover-ph { width:55px; height:82px; background:var(--border-soft); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; color:var(--muted); }
 .vc-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:.2rem; }
@@ -337,7 +337,7 @@ tr.inactive td.td-voting { opacity:1; }
 .book-card { background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
 .book-card-inactive { opacity:.55; }
 .bc-main { display:flex; gap:.7rem; padding:.7rem; }
-.bc-cover { flex-shrink:0; }
+.bc-cover { flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:.3rem; }
 .bc-cover-img { width:62px; height:93px; object-fit:cover; border-radius:4px; display:block; }
 .bc-cover-ph { width:62px; height:93px; background:var(--border-soft); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:var(--muted); }
 .bc-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:.22rem; }
@@ -348,6 +348,7 @@ tr.inactive td.td-voting { opacity:1; }
 .bc-submitted { font-size:.75rem; color:var(--muted); }
 .bc-actions { display:flex; gap:.3rem; flex-wrap:wrap; margin-top:.2rem; }
 .bc-synopsis-btn { background:none; border:none; padding:0; font:inherit; font-size:.78rem; color:var(--green); cursor:pointer; text-align:left; margin-top:.18rem; }
+.bc-cover .btn, .vc-cover .btn { font-size:.72rem; padding:.18rem .4rem; width:100%; justify-content:center; }
 .bc-synopsis { padding:.6rem .7rem; border-top:1px solid var(--border-soft); font-size:.83rem; line-height:1.65; color:var(--text); white-space:pre-line; }
 
 /* ── Public Home ─────────────────────────────────────── */

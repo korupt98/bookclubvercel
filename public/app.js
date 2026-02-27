@@ -605,17 +605,18 @@ function renderBooksTable() {
       title="${b.archived ? 'Book is archived' : canToggleVoting ? 'Toggle voting' : 'Not your book'}"
       onchange="memberToggleVoting(${b.id})">`;
     const hasSynopsis = !!b.description;
+    // actions[0] = Details (goes under cover), actions.slice(1) = Edit/Archive
     cardRows += `
       <div class="book-card ${b.archived ? 'book-card-inactive' : ''}" id="bc-${b.id}">
         <div class="bc-main">
-          <div class="bc-cover">${coverCard}</div>
+          <div class="bc-cover">${coverCard}${actions[0]}</div>
           <div class="bc-info">
             <div class="bc-title">${esc(b.title)}</div>
             ${b.author ? `<div class="bc-author">${esc(b.author)}</div>` : ''}
             ${metaParts.length ? `<div class="bc-meta">${metaParts.join(' · ')}</div>` : ''}
             <div class="bc-badges">${badge} ${votingCardCell}</div>
             <div class="bc-submitted">By ${esc(b.added_by_name || '?')} · ${fmtDate(b.submitted_at || b.added_at)}</div>
-            <div class="bc-actions">${actions.join('')}</div>
+            ${actions.slice(1).length ? `<div class="bc-actions">${actions.slice(1).join('')}</div>` : ''}
             ${hasSynopsis ? `<button class="bc-synopsis-btn" onclick="toggleSynopsis(${b.id},this)">View Synopsis ▾</button>` : ''}
           </div>
         </div>
@@ -929,15 +930,15 @@ function renderVoteGrid() {
       <div class="vote-card vote-row" data-id="${b.id}" onclick="toggleVoteCard(${b.id})">
         <div class="vc-main">
           <div class="vc-check"><span class="vote-check-icon">&#10003;</span></div>
-          <div class="vc-cover">${cardImg}</div>
+          <div class="vc-cover">
+            ${cardImg}
+            <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();showBookDetails(${b.id})">Details</button>
+          </div>
           <div class="vc-info">
             <div class="vc-title">${esc(b.title)}</div>
             ${b.author ? `<div class="vc-author">${esc(b.author)}</div>` : ''}
             ${metaParts.length ? `<div class="vc-meta">${metaParts.join(' · ')}</div>` : ''}
-            <div class="vc-actions">
-              <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();showBookDetails(${b.id})">Details</button>
-              ${hasSynopsis ? `<button class="bc-synopsis-btn" onclick="event.stopPropagation();toggleVoteSynopsis(${b.id},this)">Synopsis ▾</button>` : ''}
-            </div>
+            ${hasSynopsis ? `<div class="vc-actions"><button class="bc-synopsis-btn" onclick="event.stopPropagation();toggleVoteSynopsis(${b.id},this)">Synopsis ▾</button></div>` : ''}
           </div>
         </div>
         ${hasSynopsis ? `<div id="vc-syn-${b.id}" class="bc-synopsis hidden">${esc(b.description)}</div>` : ''}
