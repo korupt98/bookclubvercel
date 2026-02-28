@@ -365,7 +365,7 @@ tr.inactive td.td-voting { opacity:1; }
 /* ── Public Home ─────────────────────────────────────── */
 #public-home > header { background:var(--green); color:#fff; padding:.85rem 1.5rem; box-shadow:0 2px 8px rgba(0,0,0,.2); }
 .public-clubs-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(520px,100%),1fr)); gap:1.25rem; }
-.public-club-card { background:var(--surface); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:1.25rem; }
+.public-club-card { background:var(--surface); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:1.25rem; min-width:0; }
 .public-club-card h3 { color:var(--green); margin-bottom:.5rem; }
 .public-books-list { display:flex; flex-direction:column; gap:.5rem; margin-top:.5rem; }
 .public-book-item { display:flex; align-items:center; gap:.65rem; padding:.35rem 0; border-bottom:1px solid var(--border-soft); }
@@ -383,7 +383,9 @@ tr.inactive td.td-voting { opacity:1; }
 .thumb-sm    { width:34px; height:50px; object-fit:cover; border-radius:3px; display:block; }
 .thumb-sm-ph { width:34px; height:50px; background:var(--border-soft); border-radius:3px; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:.9rem; flex-shrink:0; }
 
-/* Public home book table */
+/* Public home book table / card swap */
+.pub-books-cards  { display:none; margin-top:.5rem; }
+.pub-book-item-right { display:flex; flex-direction:column; align-items:flex-end; gap:.3rem; flex-shrink:0; }
 .pub-table-wrap   { overflow-x:auto; margin-top:.5rem; }
 .pub-books-table  { width:100%; border-collapse:collapse; font-size:.82rem; }
 .pub-books-table thead th { text-align:left; padding:.38rem .5rem; font-size:.75rem; color:var(--muted); border-bottom:2px solid var(--border); white-space:nowrap; }
@@ -568,8 +570,10 @@ tr.inactive td.td-voting { opacity:1; }
     max-height:90vh; overflow-y:auto; }
   .modal-wide { width:100%; max-width:100%; }
 
-  /* Public home */
+  /* Public home — swap table for card list */
   .public-clubs-grid { grid-template-columns:1fr; }
+  .pub-table-wrap  { display:none; }
+  .pub-books-cards { display:block; }
 
   /* Genre picker — 2 columns */
   .genre-picker { grid-template-columns:repeat(2,1fr); }

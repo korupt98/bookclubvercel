@@ -327,32 +327,55 @@ function renderPublicClubCard(c, expanded) {
   const visible = expanded ? c.books : c.books.slice(0, LIMIT);
   const hasMore = c.books.length > LIMIT;
 
-  const bookRows = visible.length
-    ? `<div class="pub-table-wrap">
+  const bookRows = visible.length ? (() => {
+    const rows = visible.map(b => {
+      const cover = b.cover_url
+        ? `<img class="thumb-sm" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
+        : `<div class="thumb-sm-ph">&#128214;</div>`;
+      const coverCard = b.cover_url
+        ? `<img src="${b.cover_url}" alt="" onerror="this.style.display='none'" style="width:32px;height:48px;object-fit:cover;border-radius:3px;flex-shrink:0">`
+        : `<div class="pub-book-ph">&#128214;</div>`;
+      const badge = b.selected
+        ? `<span class="badge badge-selected">&#10003; Selected</span>`
+        : !b.active_for_voting
+          ? `<span class="badge badge-removed">Removed</span>`
+          : `<span class="badge badge-active">Active</span>`;
+      const metaParts = [
+        b.author || null,
+        b.page_count ? `${Number(b.page_count).toLocaleString()} pp` : null,
+        b.genre ? b.genre.split(',')[0].trim() : null,
+      ].filter(Boolean);
+      return { cover, coverCard, badge, metaParts, b };
+    });
+
+    const tableHtml = `<div class="pub-table-wrap">
         <table class="pub-books-table">
           <thead><tr>
             <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th><th>Pages</th><th>Status</th>
           </tr></thead>
-          <tbody>${visible.map(b => {
-            const cover = b.cover_url
-              ? `<img class="thumb-sm" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
-              : `<div class="thumb-sm-ph">&#128214;</div>`;
-            const badge = b.selected
-              ? `<span class="badge badge-selected">&#10003; Selected</span>`
-              : !b.active_for_voting
-                ? `<span class="badge badge-removed">Removed</span>`
-                : `<span class="badge badge-active">Active</span>`;
-            return `<tr>
+          <tbody>${rows.map(({ cover, badge, b }) => `<tr>
               <td><div class="cover-cell">${cover}<button class="btn btn-ghost btn-xs" onclick="showPublicBookDetails(${c.id},${b.id})">Details</button></div></td>
               <td><strong>${esc(b.title)}</strong></td>
               <td>${esc(b.author || '—')}</td>
               <td>${esc(b.genre  || '—')}</td>
               <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
               <td>${badge}</td>
-            </tr>`;
-          }).join('')}</tbody>
+            </tr>`).join('')}</tbody>
         </table>
-      </div>`
+      </div>`;
+
+    const cardsHtml = `<div class="pub-books-cards">${rows.map(({ coverCard, badge, metaParts, b }) =>
+      `<div class="public-book-item">
+        ${coverCard}
+        <div class="pub-book-info">
+          <div class="pub-book-title">${esc(b.title)}</div>
+          ${metaParts.length ? `<div class="pub-book-author">${esc(metaParts.join(' · '))}</div>` : ''}
+        </div>
+        <div class="pub-book-item-right">${badge}<button class="btn btn-ghost btn-xs" onclick="showPublicBookDetails(${c.id},${b.id})">Details</button></div>
+      </div>`).join('')}</div>`;
+
+    return tableHtml + cardsHtml;
+  })()
     : `<p class="dim" style="font-size:.85rem;padding:.5rem 0">No books yet.</p>`;
 
   const expandBtn = !expanded && hasMore
