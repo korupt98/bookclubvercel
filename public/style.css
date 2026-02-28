@@ -1,5 +1,6 @@
 /* ── Reset ──────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { overflow-x: hidden; }
 :root {
   --green:      #2c5f2e;
   --green-dark: #1d4020;
@@ -356,7 +357,7 @@ tr.inactive td.td-voting { opacity:1; }
 
 /* ── Public Home ─────────────────────────────────────── */
 #public-home > header { background:var(--green); color:#fff; padding:.85rem 1.5rem; box-shadow:0 2px 8px rgba(0,0,0,.2); }
-.public-clubs-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(520px,1fr)); gap:1.25rem; }
+.public-clubs-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(520px,100%),1fr)); gap:1.25rem; }
 .public-club-card { background:var(--surface); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:1.25rem; }
 .public-club-card h3 { color:var(--green); margin-bottom:.5rem; }
 .public-books-list { display:flex; flex-direction:column; gap:.5rem; margin-top:.5rem; }
@@ -491,7 +492,6 @@ tr.inactive td.td-voting { opacity:1; }
   display:flex;
   gap:.85rem;
   flex:1;
-  min-width:200px;
 }
 .nm-cover { flex-shrink:0; }
 .nm-cover-img { width:70px; height:105px; object-fit:cover; border-radius:6px; display:block; box-shadow:var(--shadow); }
@@ -504,7 +504,6 @@ tr.inactive td.td-voting { opacity:1; }
   display:flex;
   flex-direction:column;
   gap:.45rem;
-  min-width:190px;
   padding-left:1rem;
   border-left:2px solid var(--border-soft);
 }
@@ -587,18 +586,15 @@ tr.inactive td.td-voting { opacity:1; }
 
   /* Detail modal header */
   .detail-header { flex-wrap:wrap; }
+
+  /* Filter bar — stack vertically on tablet and below */
+  .filter-bar { flex-direction:column; align-items:stretch; }
+  .filter-bar input[type="text"], .filter-bar select { width:100%; min-width:0; }
 }
 
 @media (max-width:480px) {
   .main-content { padding:88px .6rem 1rem; }
   .table-scroll { margin:0 -.6rem; }
-
-  /* Filter bar — stack vertically */
-  .filter-bar { flex-direction:column; align-items:stretch; }
-  .filter-bar input[type="text"],
-  .filter-bar select,
-  .filter-bar input[type="date"] { width:100%; min-width:0; }
-  .filter-bar .btn { align-self:flex-start; }
 
   /* Stat cards stay 2-col on tiny screens */
   .stat-cards { grid-template-columns:1fr 1fr; }
