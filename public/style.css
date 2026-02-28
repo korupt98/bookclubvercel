@@ -235,6 +235,8 @@ tr.inactive td.td-voting { opacity:1; }
 .admin-card { margin-bottom:1.25rem; }
 .status-box { padding:.65rem .9rem; border-radius:var(--radius); font-size:.92rem; }
 .admin-two-col { display:grid; grid-template-columns:1fr 1.1fr; gap:1.5rem; align-items:start; }
+.admin-members-forms { display:flex; flex-wrap:wrap; gap:1.25rem; align-items:start; }
+.admin-members-forms > .card { flex:1; min-width:260px; }
 
 /* Clubs grid */
 .clubs-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1rem; }

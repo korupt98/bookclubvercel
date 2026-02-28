@@ -91,56 +91,22 @@
   <nav class="tab-bar">
     <div class="tab-bar-inner">
       <button class="tab active" data-tab="stats">Dashboard</button>
-      <button class="tab" data-tab="books">Book List</button>
-      <button class="tab" data-tab="add">Add Book</button>
+      <button class="tab" data-tab="books">Books</button>
       <button class="tab" data-tab="vote">Vote</button>
       <button class="tab hidden" data-tab="manage" id="manage-tab-btn">Manage</button>
     </div>
   </nav>
 
   <main class="main-content">
-    <!-- Book List -->
+    <!-- Books -->
     <section id="tab-books" class="tab-pane">
       <div class="section-head">
-        <h2>All Books</h2>
+        <h2>Books</h2>
+        <button id="show-member-add-book-btn" class="btn btn-primary btn-sm">+ Add Book</button>
       </div>
-      <div class="filter-bar">
-        <input type="text" id="book-filter-text" placeholder="Search title or author…" autocomplete="off">
-        <select id="book-filter-genre">
-          <option value="">All genres</option>
-        </select>
-        <label class="toggle-label">
-          <input type="checkbox" id="show-inactive"> Show archived
-        </label>
-      </div>
-      <p id="books-loading" class="dim text-center mt-lg">Loading…</p>
-      <div id="table-wrap" class="table-scroll hidden">
-        <table id="books-table">
-          <thead><tr>
-            <th>Cover</th>
-            <th class="th-sort" data-sort="title">Title</th>
-            <th class="th-sort" data-sort="author">Author</th>
-            <th>Genre</th>
-            <th class="th-sort" data-sort="page_count">Pages</th>
-            <th class="th-sort" data-sort="release_year">Year</th>
-            <th>Submitted By</th>
-            <th class="th-sort th-sort-desc" data-sort="added_at">Date Added</th>
-            <th>In Voting</th>
-            <th>Status</th>
-            <th>Selected Date</th>
-            <th>Actions</th>
-          </tr></thead>
-          <tbody id="books-tbody"></tbody>
-        </table>
-      </div>
-      <div id="books-cards" class="books-cards"></div>
-      <p id="no-books" class="empty-state hidden">No books yet. Add the first one!</p>
-    </section>
 
-    <!-- Add Book -->
-    <section id="tab-add" class="tab-pane">
-      <div class="card form-card">
-        <h2>Add a Book</h2>
+      <div id="member-add-book-form" class="card form-card mb-lg hidden">
+        <h3>Add a Book</h3>
         <div class="field">
           <label>Search by title or author</label>
           <div class="autocomplete-wrap">
@@ -184,16 +150,59 @@
           <div class="genre-picker" id="book-genre-select"></div>
         </div>
         <div class="field"><label>Description</label><textarea id="book-description" rows="3" placeholder="Optional summary…"></textarea></div>
-        <button id="add-book-btn" class="btn btn-primary">Add to List</button>
+        <div class="row gap-sm">
+          <button id="add-book-btn" class="btn btn-primary">Add to List</button>
+          <button id="member-cancel-add-book-btn" class="btn btn-secondary">Cancel</button>
+        </div>
         <p id="add-result" class="msg hidden"></p>
       </div>
+
+      <div class="filter-bar">
+        <input type="text" id="book-filter-text" placeholder="Search title or author…" autocomplete="off">
+        <select id="book-filter-genre">
+          <option value="">All genres</option>
+        </select>
+        <select id="book-filter-submitter">
+          <option value="">All members</option>
+        </select>
+        <select id="book-filter-status">
+          <option value="">All books</option>
+          <option value="voting">Eligible for voting</option>
+          <option value="selected">Selected</option>
+        </select>
+        <label class="toggle-label">
+          <input type="checkbox" id="show-inactive"> Show archived
+        </label>
+      </div>
+      <p id="books-loading" class="dim text-center mt-lg">Loading…</p>
+      <div id="table-wrap" class="table-scroll hidden">
+        <table id="books-table">
+          <thead><tr>
+            <th>Cover</th>
+            <th class="th-sort" data-sort="title">Title</th>
+            <th class="th-sort" data-sort="author">Author</th>
+            <th>Genre</th>
+            <th class="th-sort" data-sort="page_count">Pages</th>
+            <th class="th-sort" data-sort="release_year">Year</th>
+            <th>Submitted By</th>
+            <th class="th-sort th-sort-desc" data-sort="added_at">Date Added</th>
+            <th>In Voting</th>
+            <th>Status</th>
+            <th>Selected Date</th>
+            <th>Actions</th>
+          </tr></thead>
+          <tbody id="books-tbody"></tbody>
+        </table>
+      </div>
+      <div id="books-cards" class="books-cards"></div>
+      <p id="no-books" class="empty-state hidden">No books yet. Add the first one!</p>
     </section>
 
     <!-- Vote -->
     <section id="tab-vote" class="tab-pane">
       <h2>Vote</h2>
       <div id="vote-no-books" class="alert alert-info hidden">
-        Submit at least one book first. Go to <strong>Add Book</strong> to nominate yours!
+        Submit at least one book first. Go to <strong>Books</strong> and click <strong>+ Add Book</strong> to nominate yours!
       </div>
       <div id="vote-no-session"    class="alert alert-info    hidden">No active voting session right now.</div>
       <div id="vote-closed-notice" class="alert alert-info    hidden">Voting is closed.</div>
@@ -328,7 +337,6 @@
   <nav class="tab-bar">
     <div class="tab-bar-inner">
       <button class="tab active" data-admin-tab="analytics">Dashboard</button>
-      <button class="tab" data-admin-tab="members">Members</button>
       <button class="tab" data-admin-tab="books">Books</button>
       <button class="tab" data-admin-tab="voting">Voting</button>
       <button class="tab" data-admin-tab="users">Manage</button>
@@ -336,35 +344,6 @@
   </nav>
 
   <main class="main-content">
-
-    <!-- Members -->
-    <section id="admin-tab-members" class="tab-pane">
-      <h2>Members <span id="members-club-label" class="dim"></span></h2>
-      <div class="admin-two-col">
-        <div>
-          <h3>Current Members</h3>
-          <div id="members-list" class="members-list"></div>
-        </div>
-        <div>
-          <div class="card form-card mb-lg">
-            <h3>Create New User</h3>
-            <div class="field"><label>Full Name <span class="req">*</span></label><input type="text" id="new-user-name" placeholder="Jane Smith"></div>
-            <div class="field"><label>Email <span class="hint">(optional — skip if Google-only)</span></label><input type="email" id="new-user-email" placeholder="jane@example.com"></div>
-            <button id="create-user-btn" class="btn btn-primary">Create &amp; Send Invite</button>
-            <p id="create-user-msg" class="msg hidden"></p>
-          </div>
-          <div class="card form-card">
-            <h3>Add Existing User</h3>
-            <div class="field">
-              <label>User</label>
-              <select id="existing-user-select"><option value="">— select user —</option></select>
-            </div>
-            <button id="add-existing-user-btn" class="btn btn-secondary">Add to Club</button>
-            <p id="add-existing-msg" class="msg hidden"></p>
-          </div>
-        </div>
-      </div>
-    </section>
 
     <!-- Books (admin) -->
     <section id="admin-tab-books" class="tab-pane">
@@ -431,6 +410,18 @@
           <button id="admin-cancel-add-book-btn" class="btn btn-secondary">Cancel</button>
         </div>
         <p id="admin-add-book-msg" class="msg hidden"></p>
+      </div>
+
+      <div class="filter-bar">
+        <input type="text" id="admin-book-filter-text" placeholder="Search title or author…" autocomplete="off">
+        <select id="admin-book-filter-submitter">
+          <option value="">All members</option>
+        </select>
+        <select id="admin-book-filter-status">
+          <option value="">All books</option>
+          <option value="voting">Eligible for voting</option>
+          <option value="selected">Selected</option>
+        </select>
       </div>
 
       <p id="admin-books-loading" class="dim text-center mt-lg hidden">Loading…</p>
@@ -535,6 +526,32 @@
             <button id="admin-nm-clear-btn" class="btn btn-danger btn-sm">Clear Meeting</button>
           </div>
           <p id="admin-nm-msg" class="msg hidden"></p>
+        </div>
+      </div>
+
+      <!-- Members Management -->
+      <div class="card admin-card mb-lg">
+        <div class="section-head" style="margin-bottom:1rem">
+          <h3 style="margin:0">Members <span id="members-club-label" class="dim"></span></h3>
+        </div>
+        <div id="members-list" class="members-list mb-lg"></div>
+        <div class="admin-members-forms">
+          <div class="card form-card">
+            <h3>Create New User</h3>
+            <div class="field"><label>Full Name <span class="req">*</span></label><input type="text" id="new-user-name" placeholder="Jane Smith"></div>
+            <div class="field"><label>Email <span class="hint">(optional — skip if Google-only)</span></label><input type="email" id="new-user-email" placeholder="jane@example.com"></div>
+            <button id="create-user-btn" class="btn btn-primary">Create &amp; Send Invite</button>
+            <p id="create-user-msg" class="msg hidden"></p>
+          </div>
+          <div class="card form-card">
+            <h3>Add Existing User</h3>
+            <div class="field">
+              <label>User</label>
+              <select id="existing-user-select"><option value="">— select user —</option></select>
+            </div>
+            <button id="add-existing-user-btn" class="btn btn-secondary">Add to Club</button>
+            <p id="add-existing-msg" class="msg hidden"></p>
+          </div>
         </div>
       </div>
 

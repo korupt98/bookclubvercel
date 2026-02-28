@@ -457,6 +457,8 @@ function setupMemberListeners() {
   });
   el('clear-preview').addEventListener('click', clearPick);
   el('add-book-btn').addEventListener('click', addBook);
+  el('show-member-add-book-btn').addEventListener('click', () => el('member-add-book-form').classList.toggle('hidden'));
+  el('member-cancel-add-book-btn').addEventListener('click', () => el('member-add-book-form').classList.add('hidden'));
   el('submit-vote-btn').addEventListener('click', submitVote);
 
   // Manage tab
@@ -481,6 +483,8 @@ function setupMemberListeners() {
   // Filter controls
   el('book-filter-text').addEventListener('input', renderBooksTable);
   el('book-filter-genre').addEventListener('change', renderBooksTable);
+  el('book-filter-submitter').addEventListener('change', renderBooksTable);
+  el('book-filter-status').addEventListener('change', renderBooksTable);
 
   // Sortable column headers (thead is static HTML, safe to wire once)
   document.querySelectorAll('#books-table th[data-sort]').forEach(th => {
@@ -502,6 +506,7 @@ async function loadMemberClub() {
   try {
     allBooks = await api(`/api/bookclubs/${currentClubId}/books`);
     populateGenreFilter();
+    populateMemberBookFilters();
     renderBooksTable();
   } finally { el('books-loading').classList.add('hidden'); }
   await refreshVoteTab();
@@ -777,16 +782,35 @@ function populateGenreFilter() {
 }
 
 /* ── Book List (member) ──────────────────────────────── */
+function populateMemberBookFilters() {
+  const sel = el('book-filter-submitter');
+  if (!sel) return;
+  const seen = new Map();
+  for (const b of allBooks) {
+    if (b.added_by_user_id && !seen.has(b.added_by_user_id))
+      seen.set(b.added_by_user_id, b.added_by_name || '?');
+  }
+  const current = sel.value;
+  sel.innerHTML = `<option value="">All members</option>` +
+    [...seen.entries()].sort((a,b)=>a[1].localeCompare(b[1]))
+      .map(([id, name]) => `<option value="${id}"${String(id)===current?' selected':''}>${esc(name)}</option>`).join('');
+}
+
 function renderBooksTable() {
   const showInactive = el('show-inactive').checked;
-  const q     = (el('book-filter-text')?.value || '').trim().toLowerCase();
-  const genre = el('book-filter-genre')?.value  || '';
+  const q          = (el('book-filter-text')?.value || '').trim().toLowerCase();
+  const genre      = el('book-filter-genre')?.value  || '';
+  const submitter  = el('book-filter-submitter')?.value || '';
+  const status     = el('book-filter-status')?.value  || '';
 
   let books = showInactive ? allBooks : allBooks.filter(b => !b.archived);
-  if (q)     books = books.filter(b =>
+  if (q)         books = books.filter(b =>
     b.title?.toLowerCase().includes(q) || b.author?.toLowerCase().includes(q));
-  if (genre) books = books.filter(b =>
+  if (genre)     books = books.filter(b =>
     b.genre?.split(',').map(g => g.trim()).includes(genre));
+  if (submitter) books = books.filter(b => String(b.added_by_user_id) === submitter);
+  if (status === 'voting')    books = books.filter(b => b.active_for_voting && !b.selected && !b.archived);
+  if (status === 'selected')  books = books.filter(b => b.selected);
 
   // client-side sort
   books = [...books].sort((a, b) => {
@@ -850,6 +874,9 @@ function renderBooksTable() {
       actions.push(b.archived
         ? `<button class="btn btn-ghost btn-xs" onclick="memberArchiveBook(${b.id},false)">Unarchive</button>`
         : `<button class="btn btn-ghost btn-xs" onclick="memberArchiveBook(${b.id},true)">Archive</button>`);
+    }
+    if (canAdmin && !b.selected) {
+      actions.push(`<button class="btn btn-danger btn-xs" onclick="memberDeleteBook(${b.id})">Delete</button>`);
     }
 
     // ── Desktop table row ──
@@ -929,6 +956,21 @@ async function memberArchiveBook(id, archive) {
     if (idx !== -1) allBooks[idx] = updated;
     renderBooksTable();
   } catch (e) { alert(e.message); }
+}
+
+function memberDeleteBook(id) {
+  const b = allBooks.find(x => x.id === id);
+  confirmAction(
+    'Delete Book',
+    `Permanently delete "${b?.title || 'this book'}"? This cannot be undone.`,
+    async () => {
+      try {
+        await api(`/api/bookclubs/${currentClubId}/books/${id}`, 'DELETE');
+        allBooks = allBooks.filter(b => b.id !== id);
+        renderBooksTable();
+      } catch (e) { alert(e.message); }
+    }
+  );
 }
 
 async function memberOpenEditBook(id) {
@@ -1113,7 +1155,9 @@ async function addBook() {
     });
     showAddMsg('Book added!', 'success');
     clearPick();
+    el('member-add-book-form').classList.add('hidden');
     allBooks.unshift(book);
+    populateMemberBookFilters();
     renderBooksTable();
   } catch (e) { showAddMsg(e.message, 'error'); }
 }
@@ -1666,11 +1710,10 @@ function setupAdminTabs() {
       btn.classList.add('active');
       el(`admin-tab-${btn.dataset.adminTab}`).classList.add('active');
       const tab = btn.dataset.adminTab;
-      if (tab === 'members')   loadAdminMembers();
       if (tab === 'books')     loadAdminBooks();
       if (tab === 'voting')    loadAdminVoting();
       if (tab === 'analytics') loadAnalytics();
-      if (tab === 'users')     { loadAdminClubs(); loadAllUsers(); renderGenreManager(); loadAdminManageNm(); }
+      if (tab === 'users')     { loadAdminClubs(); loadAllUsers(); renderGenreManager(); loadAdminManageNm(); loadAdminMembers(); }
     });
   });
 }
@@ -1712,6 +1755,9 @@ function setupAdminListeners() {
   el('admin-nm-clear-btn').addEventListener('click', clearAdminNextMeeting);
   el('admin-create-session-btn').addEventListener('click', adminCreateSession);
   el('admin-close-session-btn').addEventListener('click', adminCloseSession);
+  el('admin-book-filter-text').addEventListener('input', renderAdminBooksTable);
+  el('admin-book-filter-submitter').addEventListener('change', renderAdminBooksTable);
+  el('admin-book-filter-status').addEventListener('change', renderAdminBooksTable);
   el('analytics-run-btn').addEventListener('click', loadAnalytics);
   el('analytics-from').addEventListener('change', () => applyAnalyticsFilters('admin'));
   el('analytics-to').addEventListener('change', () => applyAnalyticsFilters('admin'));
@@ -1887,6 +1933,7 @@ async function loadAdminBooks() {
       api(`/api/bookclubs/${adminClubId}/books`),
       api(`/api/bookclubs/${adminClubId}/members`),
     ]);
+    populateAdminBookFilters();
     renderAdminBooksTable();
     populateSubmitterSelect('admin-book-submitter');
     populateSubmitterSelect('edit-submitter');
@@ -1898,17 +1945,42 @@ function populateSubmitterSelect(selectId) {
   sel.innerHTML = [`<option value="">— select member —</option>`, ...clubMembers.map(u => `<option value="${u.id}" data-name="${esc(u.name)}">${esc(u.name)}</option>`)].join('');
 }
 
+function populateAdminBookFilters() {
+  const sel = el('admin-book-filter-submitter');
+  if (!sel) return;
+  const seen = new Map();
+  for (const b of allBooks) {
+    if (b.added_by_user_id && !seen.has(b.added_by_user_id))
+      seen.set(b.added_by_user_id, b.added_by_name || '?');
+  }
+  const current = sel.value;
+  sel.innerHTML = `<option value="">All members</option>` +
+    [...seen.entries()].sort((a,b)=>a[1].localeCompare(b[1]))
+      .map(([id, name]) => `<option value="${id}"${String(id)===current?' selected':''}>${esc(name)}</option>`).join('');
+}
+
 function renderAdminBooksTable() {
-  const tbody = el('admin-books-tbody');
-  const cards = el('admin-books-cards');
-  if (!allBooks.length) {
-    tbody.innerHTML = `<tr><td colspan="12" class="empty-state">No books yet.</td></tr>`;
+  const tbody     = el('admin-books-tbody');
+  const cards     = el('admin-books-cards');
+  const q         = (el('admin-book-filter-text')?.value || '').trim().toLowerCase();
+  const submitter = el('admin-book-filter-submitter')?.value || '';
+  const status    = el('admin-book-filter-status')?.value  || '';
+
+  let books = [...allBooks];
+  if (q)         books = books.filter(b =>
+    b.title?.toLowerCase().includes(q) || b.author?.toLowerCase().includes(q));
+  if (submitter) books = books.filter(b => String(b.added_by_user_id) === submitter);
+  if (status === 'voting')   books = books.filter(b => b.active_for_voting && !b.selected && !b.archived);
+  if (status === 'selected') books = books.filter(b => b.selected);
+
+  if (!books.length) {
+    tbody.innerHTML = `<tr><td colspan="12" class="empty-state">${allBooks.length ? 'No books match the current filter.' : 'No books yet.'}</td></tr>`;
     if (cards) cards.innerHTML = '';
     return;
   }
   let tableRows = '';
   let cardRows  = '';
-  allBooks.forEach(b => {
+  books.forEach(b => {
     const cover = b.cover_url
       ? `<img class="thumb" src="${b.cover_url}" alt="" onerror="this.outerHTML='<div class=thumb-ph>&#128214;</div>'">`
       : `<div class="thumb-ph">&#128214;</div>`;
@@ -2142,9 +2214,12 @@ async function saveEditBook() {
 
 function adminDeleteBook(id) {
   const b = allBooks.find(x => x.id === id);
+  const msg = b?.selected
+    ? `Permanently delete "${b?.title || 'this book'}"? This book was already selected (read) and cannot be recovered.`
+    : `Permanently delete "${b?.title || 'this book'}"? This cannot be undone.`;
   confirmAction(
     'Delete Book',
-    `Permanently delete "${b?.title || 'this book'}"? This cannot be undone.`,
+    msg,
     async () => {
       try {
         await api(`/api/bookclubs/${adminClubId}/books/${id}`, 'DELETE');
@@ -2396,8 +2471,9 @@ function computeAnalyticsFromBooks(books, members) {
   const by_year  = {};
   for (const b of selected) {
     if (b.selected_at) {
-      const m     = new Date(b.selected_at).toISOString().slice(0, 7);
-      const y     = m.slice(0, 4);
+      const date  = new Date(b.selected_at);
+      const m     = (date.getUTCMonth() + 1).toString().padStart(2, '0'); // '01'-'12'
+      const y     = date.getUTCFullYear().toString();
       const pages = b.page_count ? Number(b.page_count) : 0;
       if (!by_month[m]) by_month[m] = { books: 0, pages: 0 };
       by_month[m].books++;
@@ -2547,9 +2623,12 @@ function renderAnalytics(d, ctx) {
           ${y} &nbsp;&#x2022;&nbsp; ${fmtPill(v)}</div>`).join('')}
       </div></div>` : ''}
     ${monthEntries.length ? `<div class="analytics-section"><h3>Books Read by Month</h3>
-      <div class="month-grid">${monthEntries.map(([k, v]) =>
-        `<div class="month-pill clickable" onclick="showAnalyticsDrilldown('${ctx}','month','${k}')" title="Click to see these books">
-          ${k} &nbsp;&#x2022;&nbsp; ${fmtPill(v)}</div>`).join('')}
+      <div class="month-grid">${monthEntries.map(([k, v]) => {
+        const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const label = MONTH_ABBR[parseInt(k)-1] || k;
+        return `<div class="month-pill clickable" onclick="showAnalyticsDrilldown('${ctx}','month','${k}')" title="Click to see these books">
+          ${label} &nbsp;&#x2022;&nbsp; ${fmtPill(v)}</div>`;
+      }).join('')}
       </div></div>` : ''}
   `;
 }
@@ -2575,7 +2654,12 @@ function showAnalyticsDrilldown(ctx, type, value) {
       title = `Read from ${u?.name || 'member'}`; break;
     }
     case 'genre': books = f.filter(b=>b.genre?.split(',').map(s=>s.trim()).includes(value)); title = `Genre: ${value}`; break;
-    case 'month': books = f.filter(b=>b.selected_at?.slice(0,7)===value);      title = `Read in ${value}`; break;
+    case 'month': {
+      const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const mLabel = MONTH_ABBR[parseInt(value)-1] || value;
+      books = f.filter(b => b.selected && b.selected_at?.slice(5,7) === value);
+      title = `Read in ${mLabel}`; break;
+    }
     case 'year':  books = f.filter(b=>b.selected && b.selected_at?.slice(0,4)===String(value));
                                                                                 title = `Books Read in ${value}`; break;
     case 'pages-read': books = [...f].filter(b=>b.selected && b.page_count)
