@@ -609,11 +609,15 @@ tr.inactive td.td-voting { opacity:1; }
   /* Smaller action buttons in table rows */
   .action-group .btn { font-size:.75rem; padding:.25rem .5rem; }
 
-  /* Keep header single-row on tiny screens so tab bar isn't hidden behind it */
-  .header-inner { flex-wrap:nowrap; }
-  .header-right { flex-shrink:1; min-width:0; flex-wrap:nowrap; gap:.3rem; }
-  .club-select-input { flex:1; min-width:0; max-width:110px; }
-  header h1 { font-size:1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px; }
+  /* Allow header to wrap to two rows so nothing gets clipped */
+  .header-inner { flex-wrap:wrap; gap:.3rem; }
+  .header-left { flex:1; min-width:0; }
+  .header-right { flex-shrink:1; min-width:0; flex-wrap:nowrap; gap:.3rem; justify-content:flex-end; }
+  .club-select-input { min-width:0; max-width:100px; }
+  header h1 { font-size:.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* Tab bar and content shift down to clear the taller two-row header (~84px) */
+  .tab-bar { top:84px; }
+  .main-content { padding-top:124px; }
 
   /* Club card actions stack */
   .club-card-actions { flex-direction:column; }
