@@ -919,6 +919,7 @@ function renderBooksTable() {
       <td class="td-voting">${votingCell}</td>
       <td>${badge}</td>
       <td>${b.selected_at ? fmtDate(b.selected_at) : '—'}</td>
+      <td>${b.discussion_date ? fmtDate(b.discussion_date) : '—'}</td>
       <td><div class="action-group">${actions.slice(1).join('')}</div></td>
     </tr>`;
 
@@ -946,6 +947,7 @@ function renderBooksTable() {
             ${metaParts.length ? `<div class="bc-meta">${metaParts.join(' · ')}</div>` : ''}
             <div class="bc-badges">${badge} ${votingCardCell}</div>
             <div class="bc-submitted">By ${esc(b.added_by_name || '?')} · ${fmtDate(b.submitted_at || b.added_at)}</div>
+            ${b.discussion_date ? `<div class="bc-submitted">Discussion: ${fmtDate(b.discussion_date)}</div>` : ''}
             ${actions.slice(1).length ? `<div class="bc-actions">${actions.slice(1).join('')}</div>` : ''}
             ${hasSynopsis ? `<button class="bc-synopsis-btn" onclick="toggleSynopsis(${b.id},this)">View Synopsis ▾</button>` : ''}
           </div>
@@ -2034,7 +2036,7 @@ function renderAdminBooksTable() {
   if (status === 'selected') books = books.filter(b => b.selected);
 
   if (!books.length) {
-    tbody.innerHTML = `<tr><td colspan="12" class="empty-state">${allBooks.length ? 'No books match the current filter.' : 'No books yet.'}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="13" class="empty-state">${allBooks.length ? 'No books match the current filter.' : 'No books yet.'}</td></tr>`;
     if (cards) cards.innerHTML = '';
     return;
   }
@@ -2072,6 +2074,7 @@ function renderAdminBooksTable() {
       <td class="td-voting">${votingCb}</td>
       <td>${badge}</td>
       <td>${b.selected_at ? fmtDate(b.selected_at) : '—'}</td>
+      <td>${b.discussion_date ? fmtDate(b.discussion_date) : '—'}</td>
       <td><div class="action-group">
         <button class="btn btn-ghost btn-xs" onclick="openEditBook(${b.id})">Edit</button>
         ${archiveBtn}
@@ -2107,6 +2110,7 @@ function renderAdminBooksTable() {
             ${metaParts.length ? `<div class="bc-meta">${metaParts.join(' · ')}</div>` : ''}
             <div class="bc-badges">${badge} ${votingCardCb}</div>
             <div class="bc-submitted">By ${esc(b.added_by_name || '?')} · ${fmtDate(b.submitted_at || b.added_at)}</div>
+            ${b.discussion_date ? `<div class="bc-submitted">Discussion: ${fmtDate(b.discussion_date)}</div>` : ''}
             <div class="bc-actions">${actionBtns}</div>
             ${hasSynopsis ? `<button class="bc-synopsis-btn" onclick="adminToggleSynopsis(${b.id},this)">View Synopsis ▾</button>` : ''}
           </div>
