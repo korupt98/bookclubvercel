@@ -87,6 +87,10 @@ async function init() {
   // Details modal close works from any page
   el('detail-close-btn').addEventListener('click', () => closeModal('details-modal'));
 
+  // Edit-book modal — wired globally so club admins (member view) can save too
+  el('edit-book-save-btn').addEventListener('click', saveEditBook);
+  el('edit-book-cancel-btn').addEventListener('click', () => closeModal('edit-book-modal'));
+
   // "Type yes" confirm modal
   el('confirm-modal-input').addEventListener('input', () => {
     el('confirm-modal-ok').disabled =
@@ -1786,8 +1790,6 @@ function setupAdminListeners() {
   el('analytics-to').addEventListener('change', () => applyAnalyticsFilters('admin'));
   el('analytics-member').addEventListener('change', () => applyAnalyticsFilters('admin'));
   el('analytics-status').addEventListener('change', () => applyAnalyticsFilters('admin'));
-  el('edit-book-save-btn').addEventListener('click', saveEditBook);
-  el('edit-book-cancel-btn').addEventListener('click', () => closeModal('edit-book-modal'));
   el('pwd-modal-close').addEventListener('click', () => closeModal('password-modal'));
 }
 
