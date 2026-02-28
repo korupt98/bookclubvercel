@@ -634,4 +634,6 @@ tr.inactive td.td-voting { opacity:1; }
   .books-cards { display:flex; }
   #vote-grid .table-scroll { display:none; }
   .vote-cards { display:flex; }
+  #admin-tab-books #admin-table-wrap { display:none; }
+  #admin-books-cards { display:flex; }
 }

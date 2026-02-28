@@ -1585,9 +1585,9 @@ async function toggleVoteDetails(ctx, sessionId, clubId, btn) {
     const votes = await api(`/api/bookclubs/${clubId}/voting/sessions/${sessionId}/votes`);
     const canRemove = isSuperAdmin();
     panel.innerHTML = votes.length
-      ? `<table class="sh-votes-table"><thead><tr><th>Member</th><th>Books Chosen</th>${canRemove ? '<th></th>' : ''}</tr></thead><tbody>` +
+      ? `<div style="overflow-x:auto"><table class="sh-votes-table"><thead><tr><th>Member</th><th>Books Chosen</th>${canRemove ? '<th></th>' : ''}</tr></thead><tbody>` +
         votes.map(v => `<tr id="vrow-${v.vote_id}"><td>${esc(v.voter_name)}</td><td>${v.book_titles.map(t => esc(t)).join(', ')}</td>${canRemove ? `<td><button class="btn btn-danger btn-xs" onclick="removeVote('${ctx}',${sessionId},${clubId},${v.vote_id},'${esc(v.voter_name)}',this)">Remove</button></td>` : ''}</tr>`).join('') +
-        `</tbody></table>`
+        `</tbody></table></div>`
       : `<p class="dim" style="padding:.5rem 0">No votes recorded.</p>`;
     panel.classList.remove('hidden');
     btn.textContent = 'Hide Votes';
@@ -1900,16 +1900,23 @@ function populateSubmitterSelect(selectId) {
 
 function renderAdminBooksTable() {
   const tbody = el('admin-books-tbody');
-  if (!allBooks.length) { tbody.innerHTML = `<tr><td colspan="12" class="empty-state">No books yet.</td></tr>`; return; }
-  tbody.innerHTML = allBooks.map(b => {
+  const cards = el('admin-books-cards');
+  if (!allBooks.length) {
+    tbody.innerHTML = `<tr><td colspan="12" class="empty-state">No books yet.</td></tr>`;
+    if (cards) cards.innerHTML = '';
+    return;
+  }
+  let tableRows = '';
+  let cardRows  = '';
+  allBooks.forEach(b => {
     const cover = b.cover_url
       ? `<img class="thumb" src="${b.cover_url}" alt="" onerror="this.outerHTML='<div class=thumb-ph>&#128214;</div>'">`
       : `<div class="thumb-ph">&#128214;</div>`;
-    const selectedBadge = b.archived
+    const badge = b.archived
       ? `<span class="badge badge-removed">Archived</span>`
       : b.selected
-        ? `<span class="badge badge-selected">&#10003;</span>`
-        : `<span class="badge badge-active">No</span>`;
+        ? `<span class="badge badge-selected">&#10003; Selected</span>`
+        : `<span class="badge badge-active">Active</span>`;
     const canToggleVoting = !b.archived;
     const votingCb = `<input type="checkbox" class="voting-cb" ${b.active_for_voting ? 'checked' : ''} ${canToggleVoting ? '' : 'disabled'}
       title="${b.archived ? 'Book is archived' : 'Toggle voting eligibility'}"
@@ -1919,7 +1926,9 @@ function renderAdminBooksTable() {
           ? `<button class="btn btn-ghost btn-xs" onclick="adminArchiveBook(${b.id},false)">Unarchive</button>`
           : `<button class="btn btn-ghost btn-xs" onclick="adminArchiveBook(${b.id},true)">Archive</button>`)
       : '';
-    return `<tr class="${b.archived ? 'inactive' : ''}">
+
+    // ── Desktop table row ──
+    tableRows += `<tr class="${b.archived ? 'inactive' : ''}">
       <td><div class="cover-cell">${cover}<button class="btn btn-ghost btn-xs" onclick="showAdminBookDetails(${b.id})">Details</button></div></td>
       <td><strong>${esc(b.title)}</strong></td>
       <td>${esc(b.author || '—')}</td>
@@ -1929,7 +1938,7 @@ function renderAdminBooksTable() {
       <td>${esc(b.added_by_name || '—')}</td>
       <td>${fmtDate(b.submitted_at || b.added_at)}</td>
       <td class="td-voting">${votingCb}</td>
-      <td>${selectedBadge}</td>
+      <td>${badge}</td>
       <td>${b.selected_at ? fmtDate(b.selected_at) : '—'}</td>
       <td><div class="action-group">
         <button class="btn btn-ghost btn-xs" onclick="openEditBook(${b.id})">Edit</button>
@@ -1937,7 +1946,51 @@ function renderAdminBooksTable() {
         <button class="btn btn-danger btn-xs" onclick="adminDeleteBook(${b.id})">Delete</button>
       </div></td>
     </tr>`;
-  }).join('');
+
+    // ── Mobile card ──
+    const coverCard = b.cover_url
+      ? `<img class="bc-cover-img" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
+      : `<div class="bc-cover-ph">&#128214;</div>`;
+    const metaParts = [
+      b.release_year || null,
+      b.page_count ? `${Number(b.page_count).toLocaleString()} pp` : null,
+      b.genre ? b.genre.split(',')[0].trim() : null,
+    ].filter(Boolean);
+    const hasSynopsis = !!b.description;
+    const votingCardCb = `<input type="checkbox" class="voting-cb" ${b.active_for_voting ? 'checked' : ''} ${canToggleVoting ? '' : 'disabled'}
+      title="${b.archived ? 'Book is archived' : 'Toggle voting'}"
+      onchange="adminToggleVoting(${b.id})">`;
+    const actionBtns = [
+      `<button class="btn btn-ghost btn-xs" onclick="openEditBook(${b.id})">Edit</button>`,
+      archiveBtn,
+      `<button class="btn btn-danger btn-xs" onclick="adminDeleteBook(${b.id})">Delete</button>`,
+    ].filter(Boolean).join('');
+    cardRows += `
+      <div class="book-card ${b.archived ? 'book-card-inactive' : ''}" id="adn-bc-${b.id}">
+        <div class="bc-main">
+          <div class="bc-cover">${coverCard}<button class="btn btn-ghost btn-xs" onclick="showAdminBookDetails(${b.id})">Details</button></div>
+          <div class="bc-info">
+            <div class="bc-title">${esc(b.title)}</div>
+            ${b.author ? `<div class="bc-author">${esc(b.author)}</div>` : ''}
+            ${metaParts.length ? `<div class="bc-meta">${metaParts.join(' · ')}</div>` : ''}
+            <div class="bc-badges">${badge} ${votingCardCb}</div>
+            <div class="bc-submitted">By ${esc(b.added_by_name || '?')} · ${fmtDate(b.submitted_at || b.added_at)}</div>
+            <div class="bc-actions">${actionBtns}</div>
+            ${hasSynopsis ? `<button class="bc-synopsis-btn" onclick="adminToggleSynopsis(${b.id},this)">View Synopsis ▾</button>` : ''}
+          </div>
+        </div>
+        ${hasSynopsis ? `<div id="adn-syn-${b.id}" class="bc-synopsis hidden">${esc(b.description)}</div>` : ''}
+      </div>`;
+  });
+  tbody.innerHTML = tableRows;
+  if (cards) cards.innerHTML = cardRows;
+}
+
+function adminToggleSynopsis(id, btn) {
+  const syn = document.getElementById(`adn-syn-${id}`);
+  if (!syn) return;
+  const nowHidden = syn.classList.toggle('hidden');
+  btn.textContent = nowHidden ? 'View Synopsis ▾' : 'Hide Synopsis ▴';
 }
 
 async function adminToggleVoting(id) {
