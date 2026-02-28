@@ -468,11 +468,6 @@ function setupMemberListeners() {
   el('nm-clear-btn').addEventListener('click', clearNextMeeting);
   el('manage-create-session-btn').addEventListener('click', manageCreateSession);
   el('manage-close-session-btn').addEventListener('click', manageCloseSession);
-  el('manage-analytics-run-btn').addEventListener('click', loadManageAnalytics);
-  el('manage-analytics-from').addEventListener('change', () => applyAnalyticsFilters('manage'));
-  el('manage-analytics-to').addEventListener('change', () => applyAnalyticsFilters('manage'));
-  el('manage-analytics-member').addEventListener('change', () => applyAnalyticsFilters('manage'));
-
   // Stats tab
   el('stats-run-btn').addEventListener('click', loadMemberStats);
   el('stats-from').addEventListener('change', () => applyAnalyticsFilters('stats'));
@@ -1295,7 +1290,6 @@ async function loadManageTab() {
   } catch (e) { console.error(e); }
   await loadManageNextMeeting(currentClubId);
   await loadManageVoting();
-  await loadManageAnalytics();
 }
 
 function renderManageMembers() {

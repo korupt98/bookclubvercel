@@ -235,38 +235,7 @@
     <!-- Manage (club admins only) -->
     <section id="tab-manage" class="tab-pane">
       <h2>Manage <span id="manage-club-label" class="dim"></span></h2>
-      <div class="admin-two-col">
-        <div>
-          <h3>Club Members</h3>
-          <div id="manage-members-list" class="members-list"></div>
-        </div>
-        <div>
-          <div class="card form-card mb-lg">
-            <h3>Create New Member</h3>
-            <div class="field"><label>Full Name <span class="req">*</span></label><input type="text" id="manage-user-name" placeholder="Jane Smith"></div>
-            <div class="field"><label>Email <span class="req">*</span></label><input type="email" id="manage-user-email" placeholder="jane@example.com"></div>
-            <button id="manage-create-user-btn" class="btn btn-primary">Create &amp; Send Invite</button>
-            <p id="manage-create-user-msg" class="msg hidden"></p>
-          </div>
-        </div>
-      </div>
-      <div class="card admin-card mt-lg">
-        <div class="section-head" style="margin-bottom:.5rem">
-          <h3 style="color:var(--green);margin:0">Stats</h3>
-          <div class="row gap-sm flex-wrap">
-            <div class="date-range">
-              <span class="dim filter-label">From</span>
-              <input type="date" id="manage-analytics-from">
-              <span class="dim">to</span>
-              <input type="date" id="manage-analytics-to">
-            </div>
-            <select id="manage-analytics-member"><option value="">All members</option></select>
-            <button id="manage-analytics-run-btn" class="btn btn-primary btn-sm">Reload</button>
-          </div>
-        </div>
-        <div id="manage-analytics-content"><p class="dim text-center mt-sm">Loading…</p></div>
-        <div id="manage-analytics-drilldown" class="analytics-drilldown hidden"></div>
-      </div>
+
       <div class="card admin-card" id="manage-next-meeting-card">
         <div class="section-head" style="margin-bottom:.75rem">
           <h3 style="color:var(--green);margin:0">Next Meeting</h3>
@@ -307,7 +276,7 @@
         </div>
       </div>
 
-      <div class="card admin-card">
+      <div class="card admin-card mt-lg">
         <h3>Voting</h3>
         <div id="manage-session-status" class="status-box"></div>
         <div class="row gap-sm mt-sm">
@@ -322,6 +291,22 @@
           <div id="manage-voter-status" class="hidden mt-sm"></div>
         </div>
         <div id="manage-voting-history" class="mt-sm"></div>
+      </div>
+
+      <div class="admin-two-col mt-lg">
+        <div>
+          <h3>Club Members</h3>
+          <div id="manage-members-list" class="members-list"></div>
+        </div>
+        <div>
+          <div class="card form-card mb-lg">
+            <h3>Create New Member</h3>
+            <div class="field"><label>Full Name <span class="req">*</span></label><input type="text" id="manage-user-name" placeholder="Jane Smith"></div>
+            <div class="field"><label>Email <span class="req">*</span></label><input type="email" id="manage-user-email" placeholder="jane@example.com"></div>
+            <button id="manage-create-user-btn" class="btn btn-primary">Create &amp; Send Invite</button>
+            <p id="manage-create-user-msg" class="msg hidden"></p>
+          </div>
+        </div>
       </div>
     </section>
   </main>
