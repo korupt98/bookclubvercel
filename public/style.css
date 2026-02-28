@@ -154,6 +154,7 @@ tr.inactive td.td-voting { opacity:1; }
 .badge-active   { background:#dbeafe; color:#1e40af; }
 .badge-selected { background:var(--success-bg); color:#166534; }
 .badge-removed  { background:var(--danger-bg);  color:#991b1b; }
+.badge-on-hold  { background:#fef9c3; color:#854d0e; }
 
 /* ── Autocomplete ────────────────────────────────────── */
 .autocomplete-wrap { position:relative; }

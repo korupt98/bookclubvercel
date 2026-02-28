@@ -342,12 +342,11 @@ function renderPublicClubCard(c, expanded) {
       const badge = b.selected
         ? `<span class="badge badge-selected">&#10003; Selected</span>`
         : !b.active_for_voting
-          ? `<span class="badge badge-removed">Removed</span>`
+          ? `<span class="badge badge-on-hold">On Hold</span>`
           : `<span class="badge badge-active">Active</span>`;
       const metaParts = [
         b.author || null,
         b.page_count ? `${Number(b.page_count).toLocaleString()} pp` : null,
-        b.genre ? b.genre.split(',')[0].trim() : null,
       ].filter(Boolean);
       return { cover, coverCard, badge, metaParts, b };
     });
@@ -355,13 +354,12 @@ function renderPublicClubCard(c, expanded) {
     const tableHtml = `<div class="pub-table-wrap">
         <table class="pub-books-table">
           <thead><tr>
-            <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th><th>Pages</th><th>Status</th>
+            <th>Cover</th><th>Title</th><th>Author</th><th>Pages</th><th>Status</th>
           </tr></thead>
           <tbody>${rows.map(({ cover, badge, b }) => `<tr>
               <td><div class="cover-cell">${cover}<button class="btn btn-ghost btn-xs" onclick="showPublicBookDetails(${c.id},${b.id})">Details</button></div></td>
               <td><strong>${esc(b.title)}</strong></td>
               <td>${esc(b.author || '—')}</td>
-              <td>${esc(b.genre  || '—')}</td>
               <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
               <td>${badge}</td>
             </tr>`).join('')}</tbody>
