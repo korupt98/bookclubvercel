@@ -331,7 +331,7 @@ function renderPublicClubCard(c, expanded) {
     ? `<div class="pub-table-wrap">
         <table class="pub-books-table">
           <thead><tr>
-            <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th><th>Pages</th><th>Status</th><th></th>
+            <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th><th>Pages</th><th>Status</th>
           </tr></thead>
           <tbody>${visible.map(b => {
             const cover = b.cover_url
@@ -343,13 +343,12 @@ function renderPublicClubCard(c, expanded) {
                 ? `<span class="badge badge-removed">Removed</span>`
                 : `<span class="badge badge-active">Active</span>`;
             return `<tr>
-              <td>${cover}</td>
+              <td><div class="cover-cell">${cover}<button class="btn btn-ghost btn-xs" onclick="showPublicBookDetails(${c.id},${b.id})">Details</button></div></td>
               <td><strong>${esc(b.title)}</strong></td>
               <td>${esc(b.author || '—')}</td>
               <td>${esc(b.genre  || '—')}</td>
               <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
               <td>${badge}</td>
-              <td><button class="btn btn-ghost btn-xs" onclick="showPublicBookDetails(${c.id},${b.id})">Details</button></td>
             </tr>`;
           }).join('')}</tbody>
         </table>
@@ -607,10 +606,7 @@ async function saveNextMeeting() {
   const msg = el('nm-msg');
   msg.className = 'msg hidden';
   try {
-    await api(`/api/bookclubs/${clubId}/next-meeting`, {
-      method: 'PATCH',
-      body: JSON.stringify({ book_id: bookId ? parseInt(bookId) : null, meeting_at: meetingAt, location }),
-    });
+    await api(`/api/bookclubs/${clubId}/next-meeting`, 'PATCH', { book_id: bookId ? parseInt(bookId) : null, meeting_at: meetingAt, location });
     msg.textContent = 'Saved!';
     msg.className = 'msg msg-success';
     setTimeout(() => msg.classList.add('hidden'), 2500);
@@ -627,10 +623,7 @@ async function clearNextMeeting() {
   const msg = el('nm-msg');
   msg.className = 'msg hidden';
   try {
-    await api(`/api/bookclubs/${clubId}/next-meeting`, {
-      method: 'PATCH',
-      body: JSON.stringify({ book_id: null, meeting_at: null, location: null }),
-    });
+    await api(`/api/bookclubs/${clubId}/next-meeting`, 'PATCH', { book_id: null, meeting_at: null, location: null });
     el('nm-book-select').value = '';
     el('nm-location').value   = '';
     el('nm-date').value        = '';
@@ -700,10 +693,7 @@ async function saveAdminNextMeeting() {
   const msg = el('admin-nm-msg');
   msg.className = 'msg hidden';
   try {
-    await api(`/api/bookclubs/${clubId}/next-meeting`, {
-      method: 'PATCH',
-      body: JSON.stringify({ book_id: bookId ? parseInt(bookId) : null, meeting_at: meetingAt, location }),
-    });
+    await api(`/api/bookclubs/${clubId}/next-meeting`, 'PATCH', { book_id: bookId ? parseInt(bookId) : null, meeting_at: meetingAt, location });
     msg.textContent = 'Saved!';
     msg.className = 'msg msg-success';
     setTimeout(() => msg.classList.add('hidden'), 2500);
@@ -720,10 +710,7 @@ async function clearAdminNextMeeting() {
   const msg = el('admin-nm-msg');
   msg.className = 'msg hidden';
   try {
-    await api(`/api/bookclubs/${clubId}/next-meeting`, {
-      method: 'PATCH',
-      body: JSON.stringify({ book_id: null, meeting_at: null, location: null }),
-    });
+    await api(`/api/bookclubs/${clubId}/next-meeting`, 'PATCH', { book_id: null, meeting_at: null, location: null });
     el('admin-nm-book-select').value = '';
     el('admin-nm-location').value   = '';
     el('admin-nm-date').value        = '';
@@ -1890,7 +1877,7 @@ function renderAdminBooksTable() {
           : `<button class="btn btn-ghost btn-xs" onclick="adminArchiveBook(${b.id},true)">Archive</button>`)
       : '';
     return `<tr class="${b.archived ? 'inactive' : ''}">
-      <td>${cover}</td>
+      <td><div class="cover-cell">${cover}<button class="btn btn-ghost btn-xs" onclick="showAdminBookDetails(${b.id})">Details</button></div></td>
       <td><strong>${esc(b.title)}</strong></td>
       <td>${esc(b.author || '—')}</td>
       <td>${esc(b.genre  || '—')}</td>
@@ -1903,7 +1890,6 @@ function renderAdminBooksTable() {
       <td>${b.selected_at ? fmtDate(b.selected_at) : '—'}</td>
       <td><div class="action-group">
         <button class="btn btn-ghost btn-xs" onclick="openEditBook(${b.id})">Edit</button>
-        <button class="btn btn-ghost btn-xs" onclick="showAdminBookDetails(${b.id})">Details</button>
         ${archiveBtn}
         <button class="btn btn-danger btn-xs" onclick="adminDeleteBook(${b.id})">Delete</button>
       </div></td>
@@ -2518,7 +2504,7 @@ function renderDrilldownBooks(ctx, title, books) {
       ${books.length
         ? `<div class="table-scroll"><table class="drilldown-table">
             <thead><tr>
-              <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th><th>Pages</th><th>Submitted By</th><th>Date</th><th>Status</th><th></th>
+              <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th><th>Pages</th><th>Submitted By</th><th>Date</th><th>Status</th>
             </tr></thead>
             <tbody>${books.map(b => {
               const cover = b.cover_url
@@ -2528,7 +2514,7 @@ function renderDrilldownBooks(ctx, title, books) {
                 ? `<span class="badge badge-selected" style="font-size:.7rem">&#10003; Selected</span>`
                 : `<span class="badge badge-active" style="font-size:.7rem">Active</span>`;
               return `<tr>
-                <td>${cover}</td>
+                <td><div class="cover-cell">${cover}<button class="btn btn-ghost btn-xs" onclick="showDrilldownBookDetails(${b.id},'${ctx}')">Details</button></div></td>
                 <td><strong>${esc(b.title)}</strong></td>
                 <td>${esc(b.author || '—')}</td>
                 <td>${esc(b.genre  || '—')}</td>
@@ -2536,7 +2522,6 @@ function renderDrilldownBooks(ctx, title, books) {
                 <td>${esc(b.added_by_name || '—')}</td>
                 <td>${fmtDate(b.submitted_at||b.added_at)}</td>
                 <td>${selBadge}</td>
-                <td><button class="btn btn-ghost btn-xs" onclick="showDrilldownBookDetails(${b.id},'${ctx}')">Details</button></td>
               </tr>`;
             }).join('')}</tbody>
           </table></div>`
