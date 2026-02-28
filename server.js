@@ -583,7 +583,7 @@ app.get('/api/bookclubs/:clubId/voting/session', requireClubAccess, async (req, 
 
 app.post('/api/bookclubs/:clubId/voting/session', requireClubAdmin, async (req, res) => {
   const clubId = parseInt(req.params.clubId);
-  const { votes_per_member = 2, book_ids = [] } = req.body;
+  const { votes_per_member = 2, book_ids = [], voter_ids = [] } = req.body;
   if (!Number.isInteger(votes_per_member) || votes_per_member < 1)
     return res.status(400).json({ error: 'votes_per_member must be a positive integer' });
   if (!book_ids.length)
@@ -596,7 +596,7 @@ app.post('/api/bookclubs/:clubId/voting/session', requireClubAdmin, async (req, 
       const b = await db.getBook(id);
       if (!b || b.bookclub_id !== clubId) return res.status(400).json({ error: 'Invalid book in ballot' });
     }
-    res.status(201).json(await db.insertSession(clubId, votes_per_member, book_ids));
+    res.status(201).json(await db.insertSession(clubId, votes_per_member, book_ids, voter_ids));
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
@@ -618,6 +618,9 @@ app.post('/api/bookclubs/:clubId/voting/vote', requireClubAccess, async (req, re
     if (!Array.isArray(book_ids) || book_ids.length !== n || new Set(book_ids).size !== n)
       return res.status(400).json({ error: `Select exactly ${n} different book${n !== 1 ? 's' : ''}` });
     if (await db.hasVoted(session.id, req.user.id)) return res.status(409).json({ error: 'Already voted' });
+    const voterIds = session.session_voter_ids || [];
+    if (voterIds.length && !voterIds.includes(req.user.id))
+      return res.status(403).json({ error: 'You are not eligible to vote in this session' });
     const ballotIds = session.session_book_ids || [];
     for (const id of book_ids) {
       if (ballotIds.length && !ballotIds.includes(id))
@@ -650,7 +653,10 @@ app.get('/api/bookclubs/:clubId/voting/results/:sid', requireClubAccess, async (
 app.get('/api/bookclubs/:clubId/voting/check-voted', requireClubAccess, async (req, res) => {
   try {
     const session = await db.getLatestSession(parseInt(req.params.clubId));
-    res.json({ has_voted: session ? await db.hasVoted(session.id, req.user.id) : false });
+    if (!session) return res.json({ has_voted: false, is_eligible: true });
+    const voterIds = session.session_voter_ids || [];
+    const is_eligible = voterIds.length === 0 || voterIds.includes(req.user.id);
+    res.json({ has_voted: await db.hasVoted(session.id, req.user.id), is_eligible });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 

@@ -1204,7 +1204,7 @@ async function refreshVoteTab() {
 }
 
 async function renderVoteTab() {
-  ['vote-no-books','vote-no-session','vote-closed-notice','vote-already-voted','vote-area','results-area']
+  ['vote-no-books','vote-no-session','vote-closed-notice','vote-already-voted','vote-not-eligible','vote-area','results-area']
     .forEach(id => el(id).classList.add('hidden'));
   if (!votingSession) { el('vote-no-session').classList.remove('hidden'); return; }
   if (votingSession.is_closed) {
@@ -1213,7 +1213,15 @@ async function renderVoteTab() {
     el('results-area').classList.remove('hidden');
     return;
   }
-  const { has_voted } = await api(`/api/bookclubs/${currentClubId}/voting/check-voted`);
+  const { has_voted, is_eligible } = await api(`/api/bookclubs/${currentClubId}/voting/check-voted`);
+  if (!is_eligible) {
+    el('vote-not-eligible').classList.remove('hidden');
+    if (votingSession.results_visible) {
+      await showPublicResults();
+      el('results-area').classList.remove('hidden');
+    }
+    return;
+  }
   if (has_voted) {
     el('vote-already-voted').classList.remove('hidden');
     if (votingSession.results_visible) {
@@ -1523,11 +1531,13 @@ async function manageCreateSession() {
 async function showStartSessionForm(ctx, clubId) {
   const configId = ctx === 'admin' ? 'admin-session-config' : 'manage-session-config';
   const panel = el(configId);
-  panel.innerHTML = '<p class="dim">Loading books…</p>';
+  panel.innerHTML = '<p class="dim">Loading…</p>';
   panel.classList.remove('hidden');
   try {
-    const books = (await api(`/api/bookclubs/${clubId}/books`))
-      .filter(b => b.active_for_voting && !b.archived);
+    const [books, members] = await Promise.all([
+      api(`/api/bookclubs/${clubId}/books`).then(bs => bs.filter(b => b.active_for_voting && !b.archived)),
+      api(`/api/bookclubs/${clubId}/members`),
+    ]);
     if (!books.length) {
       panel.innerHTML = '<p class="dim">No eligible books to include in the ballot.</p>'; return;
     }
@@ -1567,17 +1577,38 @@ async function showStartSessionForm(ctx, clubId) {
             </table>
           </div>
         </div>
+        <div class="session-book-list">
+          <div class="session-book-list-head">
+            <span class="dim" style="font-size:.85rem">Eligible voters <span class="dim" style="font-weight:normal">(all members = everyone can vote)</span></span>
+            <div class="action-group">
+              <button class="btn btn-ghost btn-xs" onclick="setAllSessionVoters('${ctx}',true)">All</button>
+              <button class="btn btn-ghost btn-xs" onclick="setAllSessionVoters('${ctx}',false)">None</button>
+            </div>
+          </div>
+          <div class="session-voter-list">
+            ${members.map(m => `
+              <label class="session-voter-row">
+                <input type="checkbox" class="session-voter-cb" data-ctx="${ctx}" value="${m.id}" checked>
+                <span>${esc(m.name)}</span>
+              </label>`).join('')}
+          </div>
+        </div>
         <div class="row gap-sm mt-sm">
           <button class="btn btn-primary btn-sm" onclick="submitStartSession('${ctx}',${clubId})">Start Vote</button>
           <button class="btn btn-secondary btn-sm" onclick="cancelStartSession('${ctx}')">Cancel</button>
         </div>
         <p id="${ctx}-start-session-msg" class="msg hidden"></p>
       </div>`;
-  } catch { panel.innerHTML = '<p class="dim">Error loading books.</p>'; }
+  } catch { panel.innerHTML = '<p class="dim">Error loading session config.</p>'; }
 }
 
 function setAllSessionBooks(ctx, checked) {
   document.querySelectorAll(`.session-book-cb[data-ctx="${ctx}"]`)
+    .forEach(cb => cb.checked = checked);
+}
+
+function setAllSessionVoters(ctx, checked) {
+  document.querySelectorAll(`.session-voter-cb[data-ctx="${ctx}"]`)
     .forEach(cb => cb.checked = checked);
 }
 
@@ -1591,13 +1622,19 @@ async function submitStartSession(ctx, clubId) {
   const n = parseInt(el(`${ctx}-votes-per-member`).value);
   const book_ids = [...document.querySelectorAll(`.session-book-cb[data-ctx="${ctx}"]:checked`)]
     .map(cb => parseInt(cb.value));
+  const allVoterCbs = document.querySelectorAll(`.session-voter-cb[data-ctx="${ctx}"]`);
+  const checkedVoterCbs = document.querySelectorAll(`.session-voter-cb[data-ctx="${ctx}"]:checked`);
+  // Only send voter_ids when a subset is selected (not all or none)
+  const voter_ids = checkedVoterCbs.length === allVoterCbs.length
+    ? []
+    : [...checkedVoterCbs].map(cb => parseInt(cb.value));
   if (!book_ids.length)
     return showMsg(`${ctx}-start-session-msg`, 'Select at least one book', 'error');
   if (book_ids.length < n)
     return showMsg(`${ctx}-start-session-msg`, `Need at least ${n} books for ${n} picks per member`, 'error');
   try {
     const session = await api(`/api/bookclubs/${clubId}/voting/session`, 'POST',
-      { votes_per_member: n, book_ids });
+      { votes_per_member: n, book_ids, voter_ids });
     cancelStartSession(ctx);
     if (ctx === 'admin') { votingSession = session; renderAdminVotingPanel(); await loadAdminResults(); await loadVotingHistory('admin', adminClubId); }
     else { manageVotingSession = session; renderManageVotingPanel(); await loadManageResults(); await loadVotingHistory('manage', currentClubId); }

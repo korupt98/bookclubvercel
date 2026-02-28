@@ -343,10 +343,12 @@ async function getLatestSession(clubId) {
   if (!rows[0]) return null;
   const session = rows[0];
   session.votes_per_member = Number(session.votes_per_member);
-  const { rows: sb } = await pool.query(
-    'SELECT book_id FROM session_books WHERE session_id = $1', [session.id]
-  );
-  session.session_book_ids = sb.map(r => r.book_id);
+  const [{ rows: sb }, { rows: sv }] = await Promise.all([
+    pool.query('SELECT book_id  FROM session_books  WHERE session_id = $1', [session.id]),
+    pool.query('SELECT user_id  FROM session_voters WHERE session_id = $1', [session.id]),
+  ]);
+  session.session_book_ids  = sb.map(r => r.book_id);
+  session.session_voter_ids = sv.map(r => r.user_id);
   return session;
 }
 
@@ -358,14 +360,16 @@ async function getOpenSession(clubId) {
   if (!rows[0]) return null;
   const session = rows[0];
   session.votes_per_member = Number(session.votes_per_member);
-  const { rows: sb } = await pool.query(
-    'SELECT book_id FROM session_books WHERE session_id = $1', [session.id]
-  );
-  session.session_book_ids = sb.map(r => r.book_id);
+  const [{ rows: sb }, { rows: sv }] = await Promise.all([
+    pool.query('SELECT book_id  FROM session_books  WHERE session_id = $1', [session.id]),
+    pool.query('SELECT user_id  FROM session_voters WHERE session_id = $1', [session.id]),
+  ]);
+  session.session_book_ids  = sb.map(r => r.book_id);
+  session.session_voter_ids = sv.map(r => r.user_id);
   return session;
 }
 
-async function insertSession(clubId, votesPerMember, bookIds) {
+async function insertSession(clubId, votesPerMember, bookIds, voterIds) {
   const { rows } = await pool.query(
     'INSERT INTO voting_sessions (bookclub_id, votes_per_member) VALUES ($1, $2) RETURNING *',
     [clubId, votesPerMember || 2]
@@ -378,8 +382,16 @@ async function insertSession(clubId, votesPerMember, bookIds) {
       [session.id, bookIds]
     );
   }
-  session.session_book_ids = bookIds || [];
-  session.votes_per_member = Number(session.votes_per_member);
+  if (voterIds?.length) {
+    await pool.query(
+      `INSERT INTO session_voters (session_id, user_id)
+       SELECT $1, unnest($2::int[])`,
+      [session.id, voterIds]
+    );
+  }
+  session.session_book_ids  = bookIds  || [];
+  session.session_voter_ids = voterIds || [];
+  session.votes_per_member  = Number(session.votes_per_member);
   return session;
 }
 
@@ -444,12 +456,15 @@ async function getResults(sessionId, clubId = null) {
   let voter_status = null;
   if (clubId) {
     const members = await getBookclubMembers(clubId);
-    const { rows: voted } = await pool.query(
-      'SELECT DISTINCT voter_user_id FROM votes WHERE session_id = $1 AND voter_user_id IS NOT NULL',
-      [sessionId]
-    );
-    const votedIds = new Set(voted.map(r => Number(r.voter_user_id)));
-    voter_status = members.map(m => ({ id: m.id, name: m.name, voted: votedIds.has(m.id) }));
+    const [{ rows: voted }, { rows: eligibleRows }] = await Promise.all([
+      pool.query('SELECT DISTINCT voter_user_id FROM votes WHERE session_id = $1 AND voter_user_id IS NOT NULL', [sessionId]),
+      pool.query('SELECT user_id FROM session_voters WHERE session_id = $1', [sessionId]),
+    ]);
+    const votedIds    = new Set(voted.map(r => Number(r.voter_user_id)));
+    const eligibleIds = new Set(eligibleRows.map(r => Number(r.user_id)));
+    // If session has a restricted voter list, only show those members; otherwise show all
+    const eligible = eligibleIds.size > 0 ? members.filter(m => eligibleIds.has(m.id)) : members;
+    voter_status = eligible.map(m => ({ id: m.id, name: m.name, voted: votedIds.has(m.id) }));
   }
 
   return { results, total_voters: Number(voterRows[0]?.cnt || 0), voter_status };

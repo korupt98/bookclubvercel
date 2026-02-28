@@ -456,6 +456,8 @@ tr.inactive td.td-voting { opacity:1; }
 .session-book-item { display:flex; align-items:flex-start; gap:.55rem; padding:.4rem .7rem; border-bottom:1px solid var(--border-soft); cursor:pointer; transition:background .1s; }
 .session-book-item:last-child { border-bottom:none; }
 .session-book-item:hover { background:var(--bg); }
+.session-voter-list { padding:.35rem .7rem; display:flex; flex-wrap:wrap; gap:.35rem .85rem; }
+.session-voter-row { display:flex; align-items:center; gap:.4rem; cursor:pointer; font-size:.9rem; padding:.2rem 0; }
 .session-book-item input[type="checkbox"] { flex-shrink:0; accent-color:var(--green); width:15px; height:15px; margin-top:.15rem; }
 .session-book-title  { font-size:.86rem; font-weight:600; display:block; }
 .session-book-details { display:flex; flex-direction:column; min-width:0; }

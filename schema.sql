@@ -107,7 +107,15 @@ ALTER TABLE bookclubs ADD COLUMN IF NOT EXISTS next_book_id          INT REFEREN
 ALTER TABLE bookclubs ADD COLUMN IF NOT EXISTS next_meeting_at       TIMESTAMPTZ;
 ALTER TABLE bookclubs ADD COLUMN IF NOT EXISTS next_meeting_location TEXT;
 
+-- Eligible voters per voting session (empty = all club members can vote)
+CREATE TABLE IF NOT EXISTS session_voters (
+  session_id INT NOT NULL REFERENCES voting_sessions(id) ON DELETE CASCADE,
+  user_id    INT NOT NULL REFERENCES users(id)           ON DELETE CASCADE,
+  PRIMARY KEY (session_id, user_id)
+);
+
 -- Indexes
+CREATE INDEX IF NOT EXISTS idx_session_voters_session ON session_voters(session_id);
 CREATE INDEX IF NOT EXISTS idx_genres_name            ON genres(name);
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_token    ON auth_sessions(token);
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id  ON auth_sessions(user_id);
