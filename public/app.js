@@ -2399,7 +2399,7 @@ async function loadAnalyticsCtx(ctx) {
     ]);
     populateAnalyticsMemberFilter(ctx);
     applyAnalyticsFilters(ctx);
-  } catch { el(contentId).innerHTML = `<p class="dim">Error loading analytics.</p>`; }
+  } catch { el(contentId).innerHTML = `<p class="dim">Error loading stats.</p>`; }
 }
 
 async function loadAnalytics() {

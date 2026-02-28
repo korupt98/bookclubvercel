@@ -219,9 +219,12 @@
         <h2>Stats <span id="stats-club-label" class="dim"></span></h2>
       </div>
       <div class="filter-bar">
-        <input type="date" id="stats-from" title="From date">
-        <span class="dim" style="white-space:nowrap">to</span>
-        <input type="date" id="stats-to" title="To date">
+        <div class="date-range">
+          <span class="dim filter-label">From</span>
+          <input type="date" id="stats-from">
+          <span class="dim">to</span>
+          <input type="date" id="stats-to">
+        </div>
         <select id="stats-member"><option value="">All members</option></select>
         <button id="stats-run-btn" class="btn btn-primary btn-sm">Reload</button>
       </div>
@@ -249,11 +252,14 @@
       </div>
       <div class="card admin-card mt-lg">
         <div class="section-head" style="margin-bottom:.5rem">
-          <h3 style="color:var(--green);margin:0">Analytics</h3>
+          <h3 style="color:var(--green);margin:0">Stats</h3>
           <div class="row gap-sm flex-wrap">
-            <input type="date" id="manage-analytics-from" title="From date">
-            <span class="dim" style="white-space:nowrap">to</span>
-            <input type="date" id="manage-analytics-to" title="To date">
+            <div class="date-range">
+              <span class="dim filter-label">From</span>
+              <input type="date" id="manage-analytics-from">
+              <span class="dim">to</span>
+              <input type="date" id="manage-analytics-to">
+            </div>
             <select id="manage-analytics-member"><option value="">All members</option></select>
             <button id="manage-analytics-run-btn" class="btn btn-primary btn-sm">Reload</button>
           </div>
@@ -476,16 +482,19 @@
       <div id="admin-voting-history" class="mt-lg"></div>
     </section>
 
-    <!-- Analytics -->
+    <!-- Stats -->
     <section id="admin-tab-analytics" class="tab-pane active">
       <div id="admin-next-meeting-banner" class="next-meeting-banner hidden"></div>
       <div class="section-head">
-        <h2>Analytics <span id="analytics-club-label" class="dim"></span></h2>
+        <h2>Stats <span id="analytics-club-label" class="dim"></span></h2>
       </div>
       <div class="filter-bar">
-        <input type="date" id="analytics-from" title="From date">
-        <span class="dim" style="white-space:nowrap">to</span>
-        <input type="date" id="analytics-to" title="To date">
+        <div class="date-range">
+          <span class="dim filter-label">From</span>
+          <input type="date" id="analytics-from">
+          <span class="dim">to</span>
+          <input type="date" id="analytics-to">
+        </div>
         <select id="analytics-member"><option value="">All members</option></select>
         <select id="analytics-status">
           <option value="">All books</option>
