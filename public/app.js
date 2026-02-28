@@ -2220,8 +2220,9 @@ function openEditBook(id) {
   el('edit-title').value          = b.title;
   el('edit-author').value         = b.author || '';
   buildGenreCheckboxes('edit-genre-select', b.genre || '');
-  el('edit-submitted-at').value   = b.submitted_at ? b.submitted_at.slice(0,10) : '';
-  el('edit-selected-at').value    = b.selected_at  ? b.selected_at.slice(0,10)  : '';
+  el('edit-submitted-at').value    = b.submitted_at    ? b.submitted_at.slice(0,10)    : '';
+  el('edit-selected-at').value     = b.selected_at     ? b.selected_at.slice(0,10)     : '';
+  el('edit-discussion-date').value = b.discussion_date ? b.discussion_date.slice(0,10) : '';
   el('edit-page-count').value     = b.page_count || '';
   el('edit-year').value           = b.release_year || '';
   el('edit-description').value    = b.description || '';
@@ -2246,7 +2247,8 @@ async function saveEditBook() {
   const sel     = el('edit-submitter');
   const submitterId   = parseInt(sel.value) || null;
   const submitterName = submitterId ? sel.selectedOptions[0]?.dataset.name : null;
-  const selectedAt    = el('edit-selected-at').value || null;
+  const selectedAt      = el('edit-selected-at').value || null;
+  const discussionDate  = el('edit-discussion-date').value || null;
   try {
     const updated = await api(`/api/bookclubs/${clubId}/books/${id}`, 'PATCH', {
       title:            el('edit-title').value.trim(),
@@ -2259,6 +2261,7 @@ async function saveEditBook() {
       submitted_at:     el('edit-submitted-at').value ? new Date(el('edit-submitted-at').value).toISOString() : null,
       selected:         !!selectedAt,
       selected_at:      selectedAt ? new Date(selectedAt).toISOString() : null,
+      discussion_date:  discussionDate,
       added_by_user_id: submitterId,
       added_by_name:    submitterId ? submitterName : null,
       ...(editCoverUrl !== null && { cover_url: editCoverUrl }),
@@ -2547,14 +2550,17 @@ function computeAnalyticsFromBooks(books, members) {
   const avg_page_count = withPages.length
     ? Math.round(withPages.reduce((s,b)=>s+Number(b.page_count),0)/withPages.length) : null;
 
-  // Average days between consecutive selected books (by selected_at date)
-  const readDated = selected.filter(b => b.selected_at)
-    .sort((a, b) => new Date(a.selected_at) - new Date(b.selected_at));
+  // Average days between consecutive selected books
+  // Prefer discussion_date when set, fall back to selected_at
+  const readDated = selected
+    .map(b => ({ ...b, _date: b.discussion_date || b.selected_at }))
+    .filter(b => b._date)
+    .sort((a, b) => new Date(a._date) - new Date(b._date));
   let avg_days_between = null;
   if (readDated.length >= 2) {
     const diffs = [];
     for (let i = 1; i < readDated.length; i++) {
-      diffs.push((new Date(readDated[i].selected_at) - new Date(readDated[i-1].selected_at)) / 86400000);
+      diffs.push((new Date(readDated[i]._date) - new Date(readDated[i-1]._date)) / 86400000);
     }
     avg_days_between = Math.round(diffs.reduce((s, d) => s + d, 0) / diffs.length);
   }

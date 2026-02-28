@@ -102,6 +102,9 @@ CREATE TABLE IF NOT EXISTS genres (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Discussion date per book (optional; overrides selected_at for avg-days-between-reads stat)
+ALTER TABLE books ADD COLUMN IF NOT EXISTS discussion_date DATE;
+
 -- Next meeting tracking
 ALTER TABLE bookclubs ADD COLUMN IF NOT EXISTS next_book_id          INT REFERENCES books(id) ON DELETE SET NULL;
 ALTER TABLE bookclubs ADD COLUMN IF NOT EXISTS next_meeting_at       TIMESTAMPTZ;

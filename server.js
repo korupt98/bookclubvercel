@@ -524,8 +524,8 @@ app.patch('/api/bookclubs/:clubId/books/:id', requireClubAccess, async (req, res
     if (!isPrivileged && !isOwner)
       return res.status(403).json({ error: 'You can only edit your own books' });
     const adminFields  = ['title','author','genre','page_count','release_year','description','submitted_at',
-                          'selected','selected_at','added_by_name','added_by_user_id','active_for_voting','cover_url'];
-    const memberFields = ['title','author','genre','page_count','release_year','description','active_for_voting','cover_url'];
+                          'selected','selected_at','discussion_date','added_by_name','added_by_user_id','active_for_voting','cover_url'];
+    const memberFields = ['title','author','genre','page_count','release_year','description','discussion_date','active_for_voting','cover_url'];
     const allowed = isPrivileged ? adminFields : memberFields;
     const fields = {};
     for (const k of allowed) { if (req.body[k] !== undefined) fields[k] = req.body[k]; }

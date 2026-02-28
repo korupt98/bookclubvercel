@@ -97,8 +97,9 @@ header .btn-ghost.btn-sm:hover { background:rgba(255,255,255,.15); }
 .field textarea { width:100%; padding:.65rem .9rem; border:2px solid var(--border); border-radius:var(--radius); font:inherit; font-size:.93rem; transition:border-color .15s; background:var(--surface); resize:vertical; }
 .field textarea:focus { outline:none; border-color:var(--green); }
 .field input[type="date"] { font-family:inherit; }
-.two-col   { display:grid; grid-template-columns:1fr 1fr;      gap:1rem; }
-.three-col { display:grid; grid-template-columns:1fr 1fr 1fr;  gap:1rem; }
+.two-col   { display:grid; grid-template-columns:1fr 1fr;           gap:1rem; }
+.three-col { display:grid; grid-template-columns:1fr 1fr 1fr;      gap:1rem; }
+.four-col  { display:grid; grid-template-columns:1fr 1fr 1fr 1fr;  gap:1rem; }
 
 /* ── Section head ────────────────────────────────────── */
 .section-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:.5rem; }
@@ -552,7 +553,7 @@ tr.inactive td.td-voting { opacity:1; }
   .tab { padding:.38rem .85rem; font-size:.82rem; flex-shrink:0; }
 
   /* Layout grids */
-  .two-col, .three-col, .admin-two-col { grid-template-columns:1fr; }
+  .two-col, .three-col, .four-col, .admin-two-col { grid-template-columns:1fr; }
   .form-card { max-width:100%; }
   .card { padding:1.1rem; }
 
