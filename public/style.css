@@ -396,11 +396,13 @@ tr.inactive td.td-voting { opacity:1; }
 .pub-books-table tbody td { padding:.42rem .5rem; vertical-align:middle; }
 
 /* Analytics drilldown table */
+.drilldown-table-wrap { overflow-x:auto; }
 .drilldown-table { width:100%; border-collapse:collapse; font-size:.82rem; }
 .drilldown-table thead th { text-align:left; padding:.38rem .6rem; font-size:.75rem; color:var(--muted); border-bottom:2px solid var(--border); white-space:nowrap; }
 .drilldown-table tbody tr { border-bottom:1px solid var(--border-soft); }
 .drilldown-table tbody tr:last-child { border-bottom:none; }
 .drilldown-table tbody td { padding:.42rem .6rem; vertical-align:middle; }
+.drilldown-cards { display:none; flex-direction:column; gap:.65rem; padding:.5rem 0; }
 
 /* Ballot config table */
 /* Genre multiselect picker */
@@ -650,4 +652,6 @@ tr.inactive td.td-voting { opacity:1; }
   .vote-cards { display:flex; }
   #admin-tab-books #admin-table-wrap { display:none; }
   #admin-books-cards { display:flex; }
+  .drilldown-table-wrap { display:none; }
+  .drilldown-cards { display:flex; }
 }

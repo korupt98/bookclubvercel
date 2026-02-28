@@ -2740,6 +2740,52 @@ function renderDrilldownBooks(ctx, title, books) {
   const panelId = _aCtxId(ctx, 'analytics-drilldown', 'manage-analytics-drilldown', 'stats-drilldown');
   const panel   = el(panelId);
   panel.classList.remove('hidden');
+
+  let tableRows = '';
+  let cardRows  = '';
+
+  books.forEach(b => {
+    const cover = b.cover_url
+      ? `<img class="thumb-sm" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
+      : `<div class="thumb-sm-ph">&#128214;</div>`;
+    const coverCard = b.cover_url
+      ? `<img class="bc-cover-img" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
+      : `<div class="bc-cover-ph">&#128214;</div>`;
+    const selBadge = b.selected
+      ? `<span class="badge badge-selected" style="font-size:.7rem">&#10003; Selected</span>`
+      : `<span class="badge badge-active" style="font-size:.7rem">Active</span>`;
+    const detailsBtn = `<button class="btn btn-ghost btn-xs" onclick="showDrilldownBookDetails(${b.id},'${ctx}')">Details</button>`;
+    const metaParts = [
+      b.author || null,
+      b.page_count ? `${Number(b.page_count).toLocaleString()} pp` : null,
+    ].filter(Boolean);
+
+    tableRows += `<tr>
+      <td><div class="cover-cell">${cover}${detailsBtn}</div></td>
+      <td><strong>${esc(b.title)}</strong></td>
+      <td>${esc(b.author || '—')}</td>
+      <td>${esc(b.genre  || '—')}</td>
+      <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
+      <td>${esc(b.added_by_name || '—')}</td>
+      <td>${fmtDate(b.submitted_at||b.added_at)}</td>
+      <td>${selBadge}</td>
+    </tr>`;
+
+    cardRows += `
+      <div class="book-card">
+        <div class="bc-main">
+          <div class="bc-cover">${coverCard}${detailsBtn}</div>
+          <div class="bc-info">
+            <div class="bc-title">${esc(b.title)}</div>
+            ${b.author ? `<div class="bc-author">${esc(b.author)}</div>` : ''}
+            ${metaParts.length ? `<div class="bc-meta">${metaParts.join(' · ')}</div>` : ''}
+            <div class="bc-badges">${selBadge}</div>
+            <div class="bc-submitted">By ${esc(b.added_by_name || '?')} · ${fmtDate(b.submitted_at || b.added_at)}</div>
+          </div>
+        </div>
+      </div>`;
+  });
+
   panel.innerHTML = `
     <div class="drilldown-head">
       <h4>${esc(title)} <span class="dim">(${books.length})</span></h4>
@@ -2747,29 +2793,13 @@ function renderDrilldownBooks(ctx, title, books) {
     </div>
     <div class="drilldown-body">
       ${books.length
-        ? `<div class="table-scroll"><table class="drilldown-table">
+        ? `<div class="drilldown-table-wrap"><table class="drilldown-table">
             <thead><tr>
               <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th><th>Pages</th><th>Submitted By</th><th>Date</th><th>Status</th>
             </tr></thead>
-            <tbody>${books.map(b => {
-              const cover = b.cover_url
-                ? `<img class="thumb-sm" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
-                : `<div class="thumb-sm-ph">&#128214;</div>`;
-              const selBadge = b.selected
-                ? `<span class="badge badge-selected" style="font-size:.7rem">&#10003; Selected</span>`
-                : `<span class="badge badge-active" style="font-size:.7rem">Active</span>`;
-              return `<tr>
-                <td><div class="cover-cell">${cover}<button class="btn btn-ghost btn-xs" onclick="showDrilldownBookDetails(${b.id},'${ctx}')">Details</button></div></td>
-                <td><strong>${esc(b.title)}</strong></td>
-                <td>${esc(b.author || '—')}</td>
-                <td>${esc(b.genre  || '—')}</td>
-                <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
-                <td>${esc(b.added_by_name || '—')}</td>
-                <td>${fmtDate(b.submitted_at||b.added_at)}</td>
-                <td>${selBadge}</td>
-              </tr>`;
-            }).join('')}</tbody>
-          </table></div>`
+            <tbody>${tableRows}</tbody>
+          </table></div>
+          <div class="drilldown-cards">${cardRows}</div>`
         : `<p class="dim" style="padding:.75rem 0">No books.</p>`}
     </div>`;
   panel.scrollIntoView({ behavior:'smooth', block:'nearest' });
