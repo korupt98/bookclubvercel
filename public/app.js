@@ -2388,25 +2388,45 @@ async function loadAllUsers() {
 
 function renderAllUsersTable() {
   const tbody = el('users-tbody');
-  if (!allUsers.length) { tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No users yet.</td></tr>`; return; }
-  tbody.innerHTML = allUsers.map(u => {
+  const cards = el('users-cards');
+  if (!allUsers.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No users yet.</td></tr>`;
+    if (cards) cards.innerHTML = '';
+    return;
+  }
+  let tableRows = '';
+  let cardRows  = '';
+  allUsers.forEach(u => {
     const globalBadge = u.role === 'superadmin'
       ? `<span class="role-badge role-badge-superadmin">Superadmin</span>`
       : `<span class="role-badge">Member</span>`;
     const toggleLabel = u.role === 'superadmin' ? 'Make Member' : 'Make Superadmin';
     const toggleRole  = u.role === 'superadmin' ? 'member' : 'superadmin';
-    return `<tr>
+    const actionBtns = `<div class="action-group">
+      <button class="btn btn-ghost btn-xs" onclick="setUserRole(${u.id},'${toggleRole}')">${toggleLabel}</button>
+      <button class="btn btn-ghost btn-xs" onclick="resetUserPassword(${u.id})">Reset Pwd</button>
+      <button class="btn btn-danger btn-xs" onclick="deleteUser(${u.id})">Delete</button>
+    </div>`;
+    tableRows += `<tr>
       <td><strong>${esc(u.name)}</strong></td>
-      <td>${esc(u.email)}</td>
+      <td>${esc(u.email || '—')}</td>
       <td>${globalBadge}</td>
       <td>${fmtDate(u.created_at)}</td>
-      <td><div class="action-group">
-        <button class="btn btn-ghost btn-xs" onclick="setUserRole(${u.id},'${toggleRole}')">${toggleLabel}</button>
-        <button class="btn btn-ghost btn-xs" onclick="resetUserPassword(${u.id})">Reset Pwd</button>
-        <button class="btn btn-danger btn-xs" onclick="deleteUser(${u.id})">Delete</button>
-      </div></td>
+      <td>${actionBtns}</td>
     </tr>`;
-  }).join('');
+    cardRows += `<div class="member-row">
+      <div class="member-info">
+        <strong>${esc(u.name)}</strong>
+        <span>${esc(u.email || '—')} &nbsp;·&nbsp; Joined ${fmtDate(u.created_at)}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+        ${globalBadge}
+        ${actionBtns}
+      </div>
+    </div>`;
+  });
+  tbody.innerHTML = tableRows;
+  if (cards) cards.innerHTML = cardRows;
 }
 
 async function setUserRole(userId, role) {

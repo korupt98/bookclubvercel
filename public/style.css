@@ -249,6 +249,7 @@ tr.inactive td.td-voting { opacity:1; }
 
 /* Members list */
 .members-list { display:flex; flex-direction:column; gap:.5rem; }
+.users-cards  { display:none; }
 .member-row { background:var(--surface); border-radius:var(--radius); padding:.65rem .85rem; box-shadow:var(--shadow); display:flex; justify-content:space-between; align-items:center; gap:.5rem; }
 .member-info strong { display:block; font-size:.9rem; }
 .member-info span   { font-size:.8rem; color:var(--muted); }
@@ -654,4 +655,6 @@ tr.inactive td.td-voting { opacity:1; }
   #admin-books-cards { display:flex; }
   .drilldown-table-wrap { display:none; }
   .drilldown-cards { display:flex; }
+  #users-table-wrap { display:none; }
+  .users-cards { display:flex; }
 }
