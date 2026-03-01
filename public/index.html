@@ -94,6 +94,7 @@
       <button class="tab" data-tab="books">Books</button>
       <button class="tab" data-tab="vote">Vote</button>
       <button class="tab hidden" data-tab="manage" id="manage-tab-btn">Manage</button>
+      <button class="tab" data-tab="account">My Account</button>
     </div>
   </nav>
 
@@ -241,17 +242,29 @@
       </div>
       <div id="stats-content"></div>
       <div id="stats-drilldown" class="analytics-drilldown hidden"></div>
+    </section>
 
-      <div class="card admin-card mt-lg" id="my-account-card">
-        <div class="section-head"><h3>My Account</h3></div>
-        <h4 style="margin:.5rem 0">Change Password</h4>
-        <div class="field"><label>Current Password <span class="hint">(leave blank if signing in with Google)</span></label>
-          <input type="password" id="acct-current-pwd"></div>
-        <div class="field"><label>New Password <span class="hint">(min 6 characters)</span></label>
-          <input type="password" id="acct-new-pwd"></div>
-        <div class="field"><label>Confirm New Password</label>
-          <input type="password" id="acct-confirm-pwd"></div>
-        <button class="btn btn-primary btn-sm" onclick="changeMyPassword()">Save Password</button>
+    <!-- My Account -->
+    <section id="tab-account" class="tab-pane">
+      <div class="section-head">
+        <h2>My Account</h2>
+      </div>
+      <div class="card form-card" style="max-width:480px">
+        <h3>Change Password</h3>
+        <div class="field">
+          <label>Current Password</label>
+          <input type="password" id="acct-current-pwd" placeholder="Enter current password" autocomplete="current-password">
+          <p class="hint" style="margin-top:.3rem">Leave blank if you sign in with Google and haven't set a password yet.</p>
+        </div>
+        <div class="field">
+          <label>New Password</label>
+          <input type="password" id="acct-new-pwd" placeholder="At least 6 characters" autocomplete="new-password">
+        </div>
+        <div class="field">
+          <label>Confirm New Password</label>
+          <input type="password" id="acct-confirm-pwd" placeholder="Repeat new password" autocomplete="new-password">
+        </div>
+        <button class="btn btn-primary" onclick="changeMyPassword()">Update Password</button>
         <p id="acct-pwd-msg" class="msg hidden"></p>
       </div>
     </section>
