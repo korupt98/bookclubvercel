@@ -1398,11 +1398,27 @@ function renderManageMembers() {
   }).join('');
 }
 
-async function setMemberClubRole(userId, role) {
-  try {
-    await api(`/api/bookclubs/${currentClubId}/members/${userId}/role`, 'PATCH', { role });
-    await loadManageTab();
-  } catch (e) { alert(e.message); }
+function setMemberClubRole(userId, role) {
+  if (role === 'admin') {
+    const u = clubMembers.find(m => m.id === userId);
+    confirmAction(
+      'Make Club Admin?',
+      `Give "${u?.name || 'this member'}" club admin access? They will be able to manage members, voting, and settings for this club. Type "yes" to confirm.`,
+      async () => {
+        try {
+          await api(`/api/bookclubs/${currentClubId}/members/${userId}/role`, 'PATCH', { role });
+          await loadManageTab();
+        } catch (e) { alert(e.message); }
+      }
+    );
+  } else {
+    (async () => {
+      try {
+        await api(`/api/bookclubs/${currentClubId}/members/${userId}/role`, 'PATCH', { role });
+        await loadManageTab();
+      } catch (e) { alert(e.message); }
+    })();
+  }
 }
 
 function removeMemberFromManage(userId) {
