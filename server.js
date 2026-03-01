@@ -97,12 +97,12 @@ app.get('/api/public/clubs', async (req, res) => {
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+  const { identifier, password } = req.body;
+  if (!identifier || !password) return res.status(400).json({ error: 'Email/username and password required' });
   try {
-    const user = await db.getUserByEmail(email);
+    const user = await db.getUserByEmailOrUsername(identifier);
     if (!user || !user.password_hash || !verifyPassword(password, user.password_hash)) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
     const token = generateToken();
     await db.createSession(user.id, token);
@@ -162,6 +162,19 @@ app.post('/api/auth/logout', requireAuth, async (req, res) => {
   const token = req.headers.authorization?.replace('Bearer ', '').trim();
   if (token) await db.deleteSession(token);
   res.json({ ok: true });
+});
+
+app.post('/api/auth/change-password', requireAuth, async (req, res) => {
+  const { current_password, new_password } = req.body;
+  if (!new_password || new_password.length < 6)
+    return res.status(400).json({ error: 'New password must be at least 6 characters' });
+  try {
+    const user = await db.getUser(req.user.id);
+    if (user.password_hash && (!current_password || !verifyPassword(current_password, user.password_hash)))
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    await db.updateUser(user.id, { password_hash: hashPassword(new_password) });
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 app.get('/api/auth/me', requireAuth, async (req, res) => {
@@ -311,12 +324,22 @@ app.get('/api/users', requireSuperAdmin, async (req, res) => {
 
 app.post('/api/users', requireAuth, async (req, res) => {
   const { name, bookclub_ids = [] } = req.body;
-  const email = req.body.email?.trim() || null;
+  const email    = req.body.email?.trim()    || null;
+  const username = req.body.username?.trim() || null;
+  const clubRole = req.body.club_role === 'admin' ? 'admin' : 'member';
+
   if (!name?.trim()) return res.status(400).json({ error: 'Name required' });
 
-  // Superadmin can create without email; club admins must provide email (for invite)
+  if (username && !/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
+    return res.status(400).json({ error: 'Username must be 3–30 characters: letters, numbers, underscores only' });
+  }
+
+  // Only superadmin can assign global superadmin role
+  const userRole = (req.user.role === 'superadmin' && req.body.role === 'superadmin') ? 'superadmin' : 'member';
+
+  // Club admins: email OR username required; must be admin of at least one club
   if (req.user.role !== 'superadmin') {
-    if (!email) return res.status(400).json({ error: 'Email required' });
+    if (!email && !username) return res.status(400).json({ error: 'Email or username required' });
     let isAdminOfAny = false;
     for (const cid of bookclub_ids) {
       const role = await db.getClubRole(req.user.id, parseInt(cid));
@@ -329,14 +352,23 @@ app.post('/api/users', requireAuth, async (req, res) => {
     if (email && await db.getUserByEmail(email)) {
       return res.status(409).json({ error: 'Email already registered' });
     }
-    const tempPwd = email ? generateTempPassword() : null;
-    const user    = await db.createUser(name, email, tempPwd ? hashPassword(tempPwd) : null);
+    if (username) {
+      const existing = await db.getUserByEmailOrUsername(username);
+      if (existing) return res.status(409).json({ error: 'Username already taken' });
+    }
+
+    const tempPwd = generateTempPassword();
+    let user = await db.createUser(name, email, hashPassword(tempPwd), username);
+
+    if (userRole === 'superadmin') {
+      user = await db.updateUser(user.id, { role: 'superadmin' });
+    }
 
     for (const cid of bookclub_ids) {
       const club = await db.getBookclub(parseInt(cid));
       if (!club) continue;
-      await db.addUserToBookclub(user.id, club.id);
-      if (email && tempPwd) {
+      await db.addUserToBookclub(user.id, club.id, clubRole);
+      if (email) {
         try {
           await sendInviteEmail({ to: email, name: user.name, bookclubName: club.name, loginUrl: APP_URL, tempPassword: tempPwd });
         } catch (err) { console.error('Email error:', err.message); }
@@ -344,7 +376,7 @@ app.post('/api/users', requireAuth, async (req, res) => {
     }
 
     const { password_hash, ...safe } = user;
-    res.status(201).json({ ...safe, ...(tempPwd && { temp_password: tempPwd }) });
+    res.status(201).json({ ...safe, temp_password: tempPwd });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 

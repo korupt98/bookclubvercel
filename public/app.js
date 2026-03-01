@@ -108,6 +108,17 @@ async function init() {
     closeModal('confirm-modal'); _confirmCallback = null;
   });
 
+  // Superadmin role dropdown — require "yes" confirmation before it sticks
+  el('new-user-role').addEventListener('change', function () {
+    if (this.value !== 'superadmin') return;
+    this.value = 'member';          // revert immediately; confirm will re-set if approved
+    confirmAction(
+      'Grant Superadmin?',
+      'Superadmins have full access to all clubs and settings. Type "yes" to confirm this role assignment.',
+      () => { el('new-user-role').value = 'superadmin'; }
+    );
+  });
+
   // Load public clubs/books
   await loadPublicHome();
 
@@ -228,11 +239,11 @@ el('quick-member-select').addEventListener('change', () => {
 el('quick-signin-btn').addEventListener('click', doQuickLogin);
 
 async function doLogin() {
-  const email    = el('login-email').value.trim();
-  const password = el('login-password').value;
-  if (!email || !password) return showLoginError('Enter email and password');
+  const identifier = el('login-identifier').value.trim();
+  const password   = el('login-password').value;
+  if (!identifier || !password) return showLoginError('Enter email/username and password');
   try {
-    const data  = await api('/api/auth/login', 'POST', { email, password });
+    const data  = await api('/api/auth/login', 'POST', { identifier, password });
     authToken   = data.token;
     currentUser = data.user;
     allClubs    = data.user.bookclubs || [];
@@ -1468,15 +1479,25 @@ async function saveEditMember() {
 }
 
 async function createMemberFromManage() {
-  const name  = el('manage-user-name').value.trim();
-  const email = el('manage-user-email').value.trim();
-  if (!name || !email) return showMsg('manage-create-user-msg', 'Name and email required', 'error');
+  const name     = el('manage-user-name').value.trim();
+  const email    = el('manage-user-email').value.trim();
+  const username = el('manage-user-username').value.trim();
+  const clubRole = el('manage-user-role').value;
+  if (!name) return showMsg('manage-create-user-msg', 'Name required', 'error');
+  if (!email && !username) return showMsg('manage-create-user-msg', 'Email or username required', 'error');
   try {
-    const data = await api('/api/users', 'POST', { name, email, bookclub_ids: [currentClubId] });
+    const data = await api('/api/users', 'POST', {
+      name,
+      email:     email    || undefined,
+      username:  username || undefined,
+      club_role: clubRole,
+      bookclub_ids: [currentClubId],
+    });
     el('manage-user-name').value = ''; el('manage-user-email').value = '';
+    el('manage-user-username').value = ''; el('manage-user-role').value = 'member';
     showMsg('manage-create-user-msg', 'User created!', 'success');
     if (data.temp_password) {
-      el('pwd-modal-email').textContent = email;
+      el('pwd-modal-email').textContent = email || username;
       el('pwd-modal-value').textContent  = data.temp_password;
       openModal('password-modal');
     }
@@ -1935,15 +1956,24 @@ function populateExistingUsersSelect() {
 }
 
 async function createUser() {
-  const name  = el('new-user-name').value.trim();
-  const email = el('new-user-email').value.trim();
+  const name     = el('new-user-name').value.trim();
+  const email    = el('new-user-email').value.trim();
+  const username = el('new-user-username').value.trim();
+  const role     = el('new-user-role').value;
   if (!name) return showMsg('create-user-msg', 'Name required', 'error');
   try {
-    const data = await api('/api/users', 'POST', { name, email: email || undefined, bookclub_ids: [adminClubId] });
+    const data = await api('/api/users', 'POST', {
+      name,
+      email:    email    || undefined,
+      username: username || undefined,
+      role,
+      bookclub_ids: [adminClubId],
+    });
     el('new-user-name').value = ''; el('new-user-email').value = '';
+    el('new-user-username').value = ''; el('new-user-role').value = 'member';
     showMsg('create-user-msg', 'User created!', 'success');
     if (data.temp_password) {
-      el('pwd-modal-email').textContent = email;
+      el('pwd-modal-email').textContent = email || username;
       el('pwd-modal-value').textContent  = data.temp_password;
       openModal('password-modal');
     }
@@ -2911,6 +2941,20 @@ function renderVoterStatus(voter_status, voterEl) {
       ).join('')}
     </div>
   </div>`;
+}
+
+/* ── My Account ──────────────────────────────────────── */
+async function changeMyPassword() {
+  const current = el('acct-current-pwd').value;
+  const next    = el('acct-new-pwd').value;
+  const confirm = el('acct-confirm-pwd').value;
+  if (next !== confirm) return showMsg('acct-pwd-msg', 'Passwords do not match', 'error');
+  if (next.length < 6)  return showMsg('acct-pwd-msg', 'At least 6 characters required', 'error');
+  try {
+    await api('/api/auth/change-password', 'POST', { current_password: current || undefined, new_password: next });
+    el('acct-current-pwd').value = el('acct-new-pwd').value = el('acct-confirm-pwd').value = '';
+    showMsg('acct-pwd-msg', 'Password updated!', 'success');
+  } catch (e) { showMsg('acct-pwd-msg', e.message, 'error'); }
 }
 
 /* ── Utility ─────────────────────────────────────────── */

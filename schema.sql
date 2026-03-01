@@ -132,3 +132,7 @@ CREATE INDEX IF NOT EXISTS idx_votes_voter            ON votes(voter_user_id);
 CREATE INDEX IF NOT EXISTS idx_users_google_id        ON users(google_id);
 CREATE INDEX IF NOT EXISTS idx_session_books_session  ON session_books(session_id);
 CREATE INDEX IF NOT EXISTS idx_vote_entries_vote      ON vote_entries(vote_id);
+
+-- Username for login (email OR username)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT UNIQUE;
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);

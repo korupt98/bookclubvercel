@@ -83,6 +83,14 @@ async function getUserByEmail(email) {
   return rows[0] || null;
 }
 
+async function getUserByEmailOrUsername(identifier) {
+  const { rows } = await pool.query(
+    `SELECT * FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1) LIMIT 1`,
+    [identifier]
+  );
+  return rows[0] || null;
+}
+
 async function getUserByGoogleId(googleId) {
   const { rows } = await pool.query(
     'SELECT * FROM users WHERE google_id = $1', [googleId]
@@ -95,10 +103,10 @@ async function getAllUsers() {
   return rows;
 }
 
-async function createUser(name, email, passwordHash) {
+async function createUser(name, email, passwordHash, username = null) {
   const { rows } = await pool.query(
-    'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING *',
-    [name, email, passwordHash]
+    'INSERT INTO users (name, email, password_hash, username) VALUES ($1,$2,$3,$4) RETURNING *',
+    [name, email, passwordHash, username || null]
   );
   return rows[0];
 }
@@ -202,12 +210,12 @@ async function getBookclubMembers(clubId) {
   return rows;
 }
 
-async function addUserToBookclub(userId, clubId) {
+async function addUserToBookclub(userId, clubId, role = 'member') {
   await pool.query(
-    `INSERT INTO bookclub_members (user_id, bookclub_id)
-     VALUES ($1, $2)
-     ON CONFLICT (user_id, bookclub_id) DO NOTHING`,
-    [userId, clubId]
+    `INSERT INTO bookclub_members (user_id, bookclub_id, club_role)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, bookclub_id) DO UPDATE SET club_role = $3`,
+    [userId, clubId, role]
   );
 }
 
@@ -628,7 +636,7 @@ module.exports = {
   // sessions
   getSession, createSession, deleteSession,
   // users
-  getUser, getUserByEmail, getUserByGoogleId, getAllUsers,
+  getUser, getUserByEmail, getUserByEmailOrUsername, getUserByGoogleId, getAllUsers,
   createUser, createGoogleUser, setGoogleId, updateUser, deleteUser,
   // bookclubs
   getAllBookclubs, getUserBookclubs, getBookclub, createBookclub, updateBookclub, deleteBookclub,
