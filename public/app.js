@@ -108,17 +108,6 @@ async function init() {
     closeModal('confirm-modal'); _confirmCallback = null;
   });
 
-  // Superadmin role dropdown — require "yes" confirmation before it sticks
-  el('new-user-role').addEventListener('change', function () {
-    if (this.value !== 'superadmin') return;
-    this.value = 'member';          // revert immediately; confirm will re-set if approved
-    confirmAction(
-      'Grant Superadmin?',
-      'Superadmins have full access to all clubs and settings. Type "yes" to confirm this role assignment.',
-      () => { el('new-user-role').value = 'superadmin'; }
-    );
-  });
-
   // Load public clubs/books
   await loadPublicHome();
 
@@ -2429,8 +2418,8 @@ function renderAllUsersTable() {
   allUsers.forEach(u => {
     const globalBadge = u.role === 'superadmin'
       ? `<span class="role-badge role-badge-superadmin">Superadmin</span>`
-      : `<span class="role-badge">Member</span>`;
-    const toggleLabel = u.role === 'superadmin' ? 'Make Member' : 'Make Superadmin';
+      : `<span class="role-badge">Regular User</span>`;
+    const toggleLabel = u.role === 'superadmin' ? 'Make Regular User' : 'Make Superadmin';
     const toggleRole  = u.role === 'superadmin' ? 'member' : 'superadmin';
     const actionBtns = `<div class="action-group">
       <button class="btn btn-ghost btn-xs" onclick="setUserRole(${u.id},'${toggleRole}')">${toggleLabel}</button>
@@ -2459,11 +2448,35 @@ function renderAllUsersTable() {
   if (cards) cards.innerHTML = cardRows;
 }
 
+function confirmSuperadminRole(select) {
+  if (select.value !== 'superadmin') return;
+  select.value = 'member';
+  confirmAction(
+    'Grant Superadmin?',
+    'Superadmins have full access to all clubs and settings. Type "yes" to confirm.',
+    () => { select.value = 'superadmin'; }
+  );
+}
+
 async function setUserRole(userId, role) {
-  try {
-    await api(`/api/users/${userId}/role`, 'PATCH', { role });
-    await loadAllUsers();
-  } catch (e) { alert(e.message); }
+  if (role === 'superadmin') {
+    const u = allUsers.find(x => x.id === userId);
+    confirmAction(
+      'Grant Superadmin?',
+      `Grant superadmin to "${u?.name || 'this user'}"? They will have full access to all clubs and settings. Type "yes" to confirm.`,
+      async () => {
+        try {
+          await api(`/api/users/${userId}/role`, 'PATCH', { role });
+          await loadAllUsers();
+        } catch (e) { alert(e.message); }
+      }
+    );
+  } else {
+    try {
+      await api(`/api/users/${userId}/role`, 'PATCH', { role });
+      await loadAllUsers();
+    } catch (e) { alert(e.message); }
+  }
 }
 
 function deleteUser(id) {

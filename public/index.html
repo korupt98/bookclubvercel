@@ -563,8 +563,8 @@
             <div class="field"><label>Email <span class="hint">(optional — skip if Google-only)</span></label><input type="email" id="new-user-email" placeholder="jane@example.com"></div>
             <div class="field"><label>Username <span class="hint">(optional)</span></label><input type="text" id="new-user-username" placeholder="jane_smith"></div>
             <div class="field"><label>Global Role</label>
-              <select id="new-user-role">
-                <option value="member">Member</option>
+              <select id="new-user-role" onchange="confirmSuperadminRole(this)">
+                <option value="member">Regular User</option>
                 <option value="superadmin">Superadmin</option>
               </select></div>
             <button id="create-user-btn" class="btn btn-primary">Create &amp; Send Invite</button>
