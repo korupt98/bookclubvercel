@@ -167,14 +167,20 @@ function showQuickLogin() {
   el('quick-login-page').classList.remove('hidden');
   el('member-app').classList.add('hidden');
   el('admin-app').classList.add('hidden');
-  populateQuickClubs();
+  populateAllUsersQuick();
 }
 
-function populateQuickClubs() {
-  const sel = el('quick-club-select');
-  sel.innerHTML = '<option value="">— select club —</option>' +
-    (window._publicClubs || []).map(c =>
-      `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+async function populateAllUsersQuick() {
+  const sel = el('quick-member-select');
+  el('quick-signin-btn').disabled = true;
+  sel.innerHTML = '<option value="">— loading… —</option>';
+  try {
+    const users = await api('/api/public/users');
+    sel.innerHTML = '<option value="">— select name —</option>' +
+      users.map(u => `<option value="${u.id}">${esc(u.name)}</option>`).join('');
+  } catch {
+    sel.innerHTML = '<option value="">Unable to load users</option>';
+  }
 }
 
 async function fetchMe() {
@@ -206,21 +212,6 @@ el('quick-back-btn').addEventListener('click', () => {
 el('login-btn').addEventListener('click', doLogin);
 el('login-password').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
 
-el('quick-club-select').addEventListener('change', async () => {
-  const clubId = parseInt(el('quick-club-select').value);
-  el('quick-member-field').classList.add('hidden');
-  el('quick-signin-btn').disabled = true;
-  el('quick-member-select').innerHTML = '<option value="">— select name —</option>';
-  if (!clubId) return;
-  try {
-    const members = await api(`/api/bookclubs/${clubId}/members/quick`);
-    el('quick-member-select').innerHTML =
-      '<option value="">— select name —</option>' +
-      members.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
-    el('quick-member-field').classList.remove('hidden');
-  } catch {}
-});
-
 el('quick-member-select').addEventListener('change', () => {
   el('quick-signin-btn').disabled = !el('quick-member-select').value;
 });
@@ -243,11 +234,10 @@ async function doLogin() {
 }
 
 async function doQuickLogin() {
-  const clubId = parseInt(el('quick-club-select').value);
   const userId = parseInt(el('quick-member-select').value);
-  if (!clubId || !userId) return;
+  if (!userId) return;
   try {
-    const data  = await api('/api/auth/quick', 'POST', { user_id: userId, club_id: clubId });
+    const data  = await api('/api/auth/quick', 'POST', { user_id: userId });
     authToken   = data.token;
     currentUser = data.user;
     allClubs    = data.user.bookclubs || [];
@@ -488,6 +478,7 @@ function setupMemberListeners() {
 
   // Manage tab
   el('manage-create-user-btn').addEventListener('click', createMemberFromManage);
+  el('manage-add-existing-btn').addEventListener('click', addExistingMemberFromManage);
   el('nm-set-btn').addEventListener('click', showNmForm);
   el('nm-edit-btn').addEventListener('click', showNmForm);
   el('nm-cancel-btn').addEventListener('click', () => { el('nm-form').classList.add('hidden'); el('nm-msg').className = 'msg hidden'; renderNmDisplay(_nmData); });
@@ -1369,8 +1360,45 @@ async function loadManageTab() {
     clubMembers = await api(`/api/bookclubs/${currentClubId}/members`);
     renderManageMembers();
   } catch (e) { console.error(e); }
+  try {
+    const allUsersRes = await api('/api/public/users');
+    populateManageExistingUsers(allUsersRes);
+  } catch {}
   await loadManageNextMeeting(currentClubId);
   await loadManageVoting();
+}
+
+function populateManageExistingUsers(users) {
+  const sel = el('manage-existing-user-select');
+  if (!sel) return;
+  const memberIds = new Set(clubMembers.map(m => m.id));
+  const nonMembers = users.filter(u => !memberIds.has(u.id));
+  sel.innerHTML = nonMembers.length
+    ? '<option value="">— select user —</option>' + nonMembers.map(u => `<option value="${u.id}">${esc(u.name)}</option>`).join('')
+    : '<option value="">All users are already members</option>';
+}
+
+async function addExistingMemberFromManage() {
+  const userId = parseInt(el('manage-existing-user-select').value);
+  const role   = el('manage-existing-role').value;
+  if (!userId) return;
+  const doAdd = async () => {
+    try {
+      await api(`/api/bookclubs/${currentClubId}/members`, 'POST', { user_id: userId, role });
+      showMsg('manage-add-existing-msg', 'User added to club!', 'success');
+      el('manage-existing-user-select').value = '';
+      el('manage-existing-role').value = 'member';
+      await loadManageTab();
+    } catch (e) { showMsg('manage-add-existing-msg', e.message, 'error'); }
+  };
+  if (role === 'admin') {
+    const name = el('manage-existing-user-select').selectedOptions[0]?.text || 'this user';
+    confirmAction('Make Club Admin?',
+      `Add "${name}" as a Club Admin? They will be able to manage members, voting, and settings for this club. Type "yes" to confirm.`,
+      doAdd);
+  } else {
+    await doAdd();
+  }
 }
 
 function renderManageMembers() {

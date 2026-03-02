@@ -52,17 +52,11 @@
 <div id="quick-login-page" class="hidden">
   <div class="login-card">
     <h1>Book Club</h1>
-    <p class="dim">Quick Sign In — select your club and name</p>
+    <p class="dim">Quick Sign In — select your name</p>
     <div class="field">
-      <label>Club</label>
-      <select id="quick-club-select">
-        <option value="">— select club —</option>
-      </select>
-    </div>
-    <div id="quick-member-field" class="field hidden">
       <label>Your Name</label>
       <select id="quick-member-select">
-        <option value="">— select name —</option>
+        <option value="">— loading… —</option>
       </select>
     </div>
     <button id="quick-signin-btn" class="btn btn-primary btn-full" disabled>Quick Sign In</button>
@@ -348,6 +342,21 @@
               </select></div>
             <button id="manage-create-user-btn" class="btn btn-primary">Create &amp; Send Invite</button>
             <p id="manage-create-user-msg" class="msg hidden"></p>
+          </div>
+          <div class="card form-card">
+            <h3>Add Existing User</h3>
+            <div class="field">
+              <label>User</label>
+              <select id="manage-existing-user-select"><option value="">— select user —</option></select>
+            </div>
+            <div class="field"><label>Club Role</label>
+              <select id="manage-existing-role">
+                <option value="member">Member</option>
+                <option value="admin">Club Admin</option>
+              </select>
+            </div>
+            <button id="manage-add-existing-btn" class="btn btn-secondary">Add to Club</button>
+            <p id="manage-add-existing-msg" class="msg hidden"></p>
           </div>
         </div>
       </div>

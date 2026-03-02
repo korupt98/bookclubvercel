@@ -95,6 +95,13 @@ app.get('/api/public/clubs', async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
+app.get('/api/public/users', async (req, res) => {
+  try {
+    const users = await db.getAllUsers();
+    res.json(users.map(u => ({ id: u.id, name: u.name })));
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 app.post('/api/auth/login', async (req, res) => {
   const { identifier, password } = req.body;
@@ -143,10 +150,12 @@ app.post('/api/auth/google', async (req, res) => {
 
 app.post('/api/auth/quick', async (req, res) => {
   const { user_id, club_id } = req.body;
-  if (!user_id || !club_id) return res.status(400).json({ error: 'user_id and club_id required' });
+  if (!user_id) return res.status(400).json({ error: 'user_id required' });
   try {
-    const inClub = await db.isUserInBookclub(parseInt(user_id), parseInt(club_id));
-    if (!inClub) return res.status(403).json({ error: 'Not a member of this club' });
+    if (club_id) {
+      const inClub = await db.isUserInBookclub(parseInt(user_id), parseInt(club_id));
+      if (!inClub) return res.status(403).json({ error: 'Not a member of this club' });
+    }
     const user = await db.getUser(parseInt(user_id));
     if (!user) return res.status(404).json({ error: 'User not found' });
     const token = generateToken();
@@ -245,11 +254,12 @@ app.get('/api/bookclubs/:clubId/members', requireClubAccess, async (req, res) =>
 });
 
 app.post('/api/bookclubs/:clubId/members', requireClubAdmin, async (req, res) => {
-  const { user_id } = req.body;
+  const { user_id, role = 'member' } = req.body;
+  const clubRole = role === 'admin' ? 'admin' : 'member';
   try {
     const user = await db.getUser(parseInt(user_id));
     if (!user) return res.status(404).json({ error: 'User not found' });
-    await db.addUserToBookclub(user.id, parseInt(req.params.clubId));
+    await db.addUserToBookclub(user.id, parseInt(req.params.clubId), clubRole);
     res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
