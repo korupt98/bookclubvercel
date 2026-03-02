@@ -834,6 +834,7 @@ function renderBooksTable() {
   if (genre)     books = books.filter(b =>
     b.genre?.split(',').map(g => g.trim()).includes(genre));
   if (submitter) books = books.filter(b => String(b.added_by_user_id) === submitter);
+  if (status === 'active')    books = books.filter(b => !b.selected && !b.archived);
   if (status === 'voting')    books = books.filter(b => b.active_for_voting && !b.selected && !b.archived);
   if (status === 'selected')  books = books.filter(b => b.selected);
 
@@ -843,6 +844,9 @@ function renderBooksTable() {
     if (sortField === 'added_at') {
       va = new Date(a.submitted_at || a.added_at).getTime();
       vb = new Date(b.submitted_at || b.added_at).getTime();
+    } else if (sortField === 'selected_at' || sortField === 'discussion_date') {
+      va = a[sortField] ? new Date(a[sortField]).getTime() : 0;
+      vb = b[sortField] ? new Date(b[sortField]).getTime() : 0;
     } else if (sortField === 'page_count' || sortField === 'release_year') {
       va = Number(va) || 0; vb = Number(vb) || 0;
     } else {
@@ -911,9 +915,7 @@ function renderBooksTable() {
       <td>${coverCell}</td>
       <td><strong>${esc(b.title)}</strong></td>
       <td>${esc(b.author || '—')}</td>
-      <td>${esc(b.genre  || '—')}</td>
       <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
-      <td>${b.release_year || '—'}</td>
       <td>${esc(b.added_by_name || '—')}</td>
       <td>${fmtDate(b.submitted_at || b.added_at)}</td>
       <td class="td-voting">${votingCell}</td>
@@ -1933,6 +1935,7 @@ function renderMembersList() {
     const roleBadge = u.club_role === 'admin'
       ? `<span class="role-badge role-badge-admin">Club Admin</span>`
       : `<span class="role-badge">Member</span>`;
+    const toggleLabel = u.club_role === 'admin' ? 'Make Member' : 'Make Admin';
     return `<div class="member-row">
       <div class="member-info">
         <strong>${esc(u.name)}</strong>
@@ -1944,11 +1947,35 @@ function renderMembersList() {
           <button class="btn btn-ghost btn-xs" onclick="openEditMember(${u.id},${adminClubId},'admin')">Edit</button>
           ${u.email ? `<button class="btn btn-ghost btn-xs" onclick="resetMemberPassword(${u.id},${adminClubId},'admin',false)">Send Invite</button>` : ''}
           <button class="btn btn-ghost btn-xs" onclick="resetMemberPassword(${u.id},${adminClubId},'admin',true)">Reset Pwd</button>
+          <button class="btn btn-ghost btn-xs" onclick="adminSetClubRole(${u.id},'${u.club_role === 'admin' ? 'member' : 'admin'}')">${toggleLabel}</button>
           <button class="btn btn-danger btn-xs" onclick="removeMember(${u.id})">Remove</button>
         </div>
       </div>
     </div>`;
   }).join('');
+}
+
+function adminSetClubRole(userId, role) {
+  if (role === 'admin') {
+    const u = clubMembers.find(m => m.id === userId);
+    confirmAction(
+      'Make Club Admin?',
+      `Give "${u?.name || 'this member'}" club admin access? They will be able to manage members, voting, and settings for this club. Type "yes" to confirm.`,
+      async () => {
+        try {
+          await api(`/api/bookclubs/${adminClubId}/members/${userId}/role`, 'PATCH', { role });
+          await loadAdminMembers();
+        } catch (e) { alert(e.message); }
+      }
+    );
+  } else {
+    (async () => {
+      try {
+        await api(`/api/bookclubs/${adminClubId}/members/${userId}/role`, 'PATCH', { role });
+        await loadAdminMembers();
+      } catch (e) { alert(e.message); }
+    })();
+  }
 }
 
 function populateExistingUsersSelect() {

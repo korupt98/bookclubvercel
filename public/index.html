@@ -169,6 +169,7 @@
         </select>
         <select id="book-filter-status">
           <option value="">All books</option>
+          <option value="active">Active</option>
           <option value="voting">Eligible for voting</option>
           <option value="selected">Selected</option>
         </select>
@@ -183,15 +184,13 @@
             <th>Cover</th>
             <th class="th-sort" data-sort="title">Title</th>
             <th class="th-sort" data-sort="author">Author</th>
-            <th>Genre</th>
             <th class="th-sort" data-sort="page_count">Pages</th>
-            <th class="th-sort" data-sort="release_year">Year</th>
-            <th>Submitted By</th>
+            <th class="th-sort" data-sort="added_by_name">Submitted By</th>
             <th class="th-sort th-sort-desc" data-sort="added_at">Date Added</th>
             <th>In Voting</th>
             <th>Status</th>
-            <th>Selected Date</th>
-            <th>Discussion Date</th>
+            <th class="th-sort" data-sort="selected_at">Selected Date</th>
+            <th class="th-sort" data-sort="discussion_date">Discussion Date</th>
             <th>Actions</th>
           </tr></thead>
           <tbody id="books-tbody"></tbody>
