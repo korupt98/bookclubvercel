@@ -265,7 +265,8 @@ app.patch('/api/bookclubs/:clubId/members/:uid/role', requireClubAdmin, async (r
   const { role } = req.body;
   if (!['admin', 'member'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
   try {
-    await db.setClubRole(parseInt(req.params.uid), parseInt(req.params.clubId), role);
+    const count = await db.setClubRole(parseInt(req.params.uid), parseInt(req.params.clubId), role);
+    if (!count) return res.status(404).json({ error: 'User is not a member of this club' });
     res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });

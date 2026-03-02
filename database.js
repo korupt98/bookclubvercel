@@ -211,12 +211,23 @@ async function getBookclubMembers(clubId) {
 }
 
 async function addUserToBookclub(userId, clubId, role = 'member') {
-  await pool.query(
-    `INSERT INTO bookclub_members (user_id, bookclub_id, club_role)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (user_id, bookclub_id) DO UPDATE SET club_role = $3`,
-    [userId, clubId, role]
-  );
+  if (role === 'admin') {
+    // Explicitly granting admin — set/override role
+    await pool.query(
+      `INSERT INTO bookclub_members (user_id, bookclub_id, club_role)
+       VALUES ($1, $2, 'admin')
+       ON CONFLICT (user_id, bookclub_id) DO UPDATE SET club_role = 'admin'`,
+      [userId, clubId]
+    );
+  } else {
+    // Default member insert — never downgrade an existing admin
+    await pool.query(
+      `INSERT INTO bookclub_members (user_id, bookclub_id)
+       VALUES ($1, $2)
+       ON CONFLICT (user_id, bookclub_id) DO NOTHING`,
+      [userId, clubId]
+    );
+  }
 }
 
 async function removeUserFromBookclub(userId, clubId) {
@@ -235,10 +246,11 @@ async function getClubRole(userId, clubId) {
 }
 
 async function setClubRole(userId, clubId, role) {
-  await pool.query(
+  const { rowCount } = await pool.query(
     'UPDATE bookclub_members SET club_role = $1 WHERE user_id = $2 AND bookclub_id = $3',
     [role, userId, clubId]
   );
+  return rowCount;
 }
 
 /* ── Books ──────────────────────────────────────────────────────────────────── */
