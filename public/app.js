@@ -2995,7 +2995,11 @@ function esc(str) {
 }
 function fmtDate(iso) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+  // DATE-only strings (YYYY-MM-DD) from PostgreSQL must be treated as local
+  // midnight, not UTC midnight, otherwise they display one day earlier in
+  // timezones behind UTC.
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? new Date(iso + 'T00:00:00') : new Date(iso);
+  return d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
 }
 function hideDropdown(id) { el(id).classList.add('hidden'); }
 function openModal(id)    { el(id).classList.add('open'); }

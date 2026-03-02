@@ -150,6 +150,18 @@ tr.inactive td.td-voting { opacity:1; }
 .thumb-ph { width:36px; height:54px; background:var(--border-soft); border-radius:3px; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:1rem; }
 .action-group { display:flex; gap:.35rem; flex-wrap:wrap; }
 
+/* Sticky Actions column — always visible on wide tables */
+.table-scroll table th:last-child,
+.table-scroll table td:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--surface);
+}
+.table-scroll table thead th:last-child { background: var(--green); }
+.table-scroll table tr:hover td:last-child { background: #faf8f4; }
+.table-scroll table tr.inactive td:last-child { background: var(--surface); }
+
 /* Badges */
 .badge { display:inline-block; padding:.15rem .5rem; border-radius:20px; font-size:.76rem; font-weight:600; white-space:nowrap; }
 .badge-active   { background:#dbeafe; color:#1e40af; }
