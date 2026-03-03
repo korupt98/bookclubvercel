@@ -580,19 +580,6 @@
         <div id="members-list" class="members-list mb-lg"></div>
         <div class="admin-members-forms">
           <div class="card form-card">
-            <h3>Create New User</h3>
-            <div class="field"><label>Full Name <span class="req">*</span></label><input type="text" id="new-user-name" placeholder="Jane Smith"></div>
-            <div class="field"><label>Email <span class="hint">(optional — skip if Google-only)</span></label><input type="email" id="new-user-email" placeholder="jane@example.com"></div>
-            <div class="field"><label>Username <span class="hint">(optional)</span></label><input type="text" id="new-user-username" placeholder="jane_smith"></div>
-            <div class="field"><label>Global Role</label>
-              <select id="new-user-role" onchange="confirmSuperadminRole(this)">
-                <option value="member">Regular User</option>
-                <option value="superadmin">Superadmin</option>
-              </select></div>
-            <button id="create-user-btn" class="btn btn-primary">Create &amp; Send Invite</button>
-            <p id="create-user-msg" class="msg hidden"></p>
-          </div>
-          <div class="card form-card">
             <h3>Add Existing User</h3>
             <div class="field">
               <label>User</label>
@@ -625,7 +612,26 @@
       <p id="clubs-msg" class="msg hidden"></p>
       <hr style="border:none;border-top:1px solid var(--border-soft);margin:1.5rem 0">
 
-      <h2>All Users</h2>
+      <div class="section-head" style="margin-bottom:1rem">
+        <h2 style="margin:0">All Users</h2>
+      </div>
+      <div class="card form-card mb-lg">
+        <h3>Create New User</h3>
+        <div class="two-col">
+          <div class="field"><label>Full Name <span class="req">*</span></label><input type="text" id="new-user-name" placeholder="Jane Smith"></div>
+          <div class="field"><label>Email <span class="hint">(optional — skip if Google-only)</span></label><input type="email" id="new-user-email" placeholder="jane@example.com"></div>
+        </div>
+        <div class="two-col">
+          <div class="field"><label>Username <span class="hint">(optional)</span></label><input type="text" id="new-user-username" placeholder="jane_smith"></div>
+          <div class="field"><label>Global Role</label>
+            <select id="new-user-role" onchange="confirmSuperadminRole(this)">
+              <option value="member">Regular User</option>
+              <option value="superadmin">Superadmin</option>
+            </select></div>
+        </div>
+        <button id="create-user-btn" class="btn btn-primary">Create &amp; Send Invite</button>
+        <p id="create-user-msg" class="msg hidden"></p>
+      </div>
       <div id="users-table-wrap" class="table-scroll">
         <table>
           <thead><tr>

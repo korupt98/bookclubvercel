@@ -176,6 +176,7 @@ async function populateAllUsersQuick() {
   sel.innerHTML = '<option value="">— loading… —</option>';
   try {
     const users = await api('/api/public/users');
+    users.sort((a, b) => a.name.localeCompare(b.name));
     sel.innerHTML = '<option value="">— select name —</option>' +
       users.map(u => `<option value="${u.id}">${esc(u.name)}</option>`).join('');
   } catch {
