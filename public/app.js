@@ -447,16 +447,22 @@ function setupMemberClubSwitcher() {
   wrap.classList.remove('hidden');
   sel.innerHTML = allClubs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
   sel.onchange = () => {
-    const newId = parseInt(sel.value);
-    if (newId === currentClubId) return;
-    const newName = allClubs.find(c => c.id === newId)?.name || 'this club';
-    if (!confirm(`Switch to "${newName}"?`)) {
-      sel.value = String(currentClubId); // revert the dropdown
-      return;
-    }
-    currentClubId = newId;
-    sessionStorage.setItem('bc_club_id', String(newId));
-    loadMemberClub();
+    const pendingId = parseInt(sel.value);
+    if (pendingId === currentClubId) return;
+    // Immediately revert the dropdown — only commit after confirmation
+    sel.value = String(currentClubId);
+    const oldName = allClubs.find(c => c.id === currentClubId)?.name || 'current club';
+    const newName = allClubs.find(c => c.id === pendingId)?.name    || 'new club';
+    confirmAction(
+      'Switch Club?',
+      `Switch from "${oldName}" to "${newName}"? Type "yes" to confirm.`,
+      () => {
+        currentClubId = pendingId;
+        sessionStorage.setItem('bc_club_id', String(pendingId));
+        sel.value = String(pendingId);
+        loadMemberClub();
+      }
+    );
   };
 }
 
