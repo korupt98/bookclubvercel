@@ -946,9 +946,7 @@ function renderBooksTable() {
       ? `<img class="bc-cover-img" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
       : `<div class="bc-cover-ph">&#128214;</div>`;
     const metaParts = [
-      b.release_year || null,
       b.page_count ? `${Number(b.page_count).toLocaleString()} pp` : null,
-      b.genre ? b.genre.split(',')[0].trim() : null,
     ].filter(Boolean);
     const votingCardCell = `<input type="checkbox" class="voting-cb" ${b.active_for_voting ? 'checked' : ''} ${canToggleVoting ? '' : 'disabled'}
       title="${b.archived ? 'Book is archived' : canToggleVoting ? 'Toggle voting' : 'Not your book'}"
@@ -1288,7 +1286,6 @@ function renderVoteGrid() {
       <td>${imgCell}</td>
       <td><strong>${esc(b.title)}</strong></td>
       <td>${esc(b.author || '—')}</td>
-      <td>${esc(b.genre  || '—')}</td>
       <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
     </tr>`;
 
@@ -1296,9 +1293,7 @@ function renderVoteGrid() {
       ? `<img class="vc-cover-img" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
       : `<div class="vc-cover-ph">&#128214;</div>`;
     const metaParts = [
-      b.release_year || null,
       b.page_count ? `${Number(b.page_count).toLocaleString()} pp` : null,
-      b.genre ? b.genre.split(',')[0].trim() : null,
     ].filter(Boolean);
     const hasSynopsis = !!b.description;
     cardRows += `
@@ -1325,7 +1320,7 @@ function renderVoteGrid() {
       <table class="vote-table">
         <thead><tr>
           <th style="width:32px"></th>
-          <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th><th>Pages</th>
+          <th>Cover</th><th>Title</th><th>Author</th><th>Pages</th>
         </tr></thead>
         <tbody>${tableRows}</tbody>
       </table>
@@ -1640,7 +1635,7 @@ async function showStartSessionForm(ctx, clubId) {
             <table class="session-book-table">
               <thead><tr>
                 <th style="width:32px"></th>
-                <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th><th>Pages</th>
+                <th>Cover</th><th>Title</th><th>Author</th><th>Pages</th>
               </tr></thead>
               <tbody>${books.map(b => {
                 const img = b.cover_url
@@ -1651,7 +1646,6 @@ async function showStartSessionForm(ctx, clubId) {
                   <td>${img}</td>
                   <td><strong>${esc(b.title)}</strong></td>
                   <td>${esc(b.author || '—')}</td>
-                  <td>${esc(b.genre  || '—')}</td>
                   <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
                 </tr>`;
               }).join('')}</tbody>
@@ -1807,7 +1801,11 @@ function showBookDetailsForBook(b) {
   if (!b) return;
   el('detail-title').textContent  = b.title;
   el('detail-author').textContent = b.author || 'Unknown Author';
-  el('detail-pages').textContent  = b.page_count ? `${Number(b.page_count).toLocaleString()} pages` : '';
+  const pageYearParts = [
+    b.page_count ? `${Number(b.page_count).toLocaleString()} pages` : null,
+    b.release_year ? String(b.release_year) : null,
+  ].filter(Boolean);
+  el('detail-pages').textContent  = pageYearParts.join(' · ');
   el('detail-genre').textContent  = b.genre ? `Genre: ${b.genre}` : '';
   el('detail-desc').textContent   = b.description || '';
   const cover = el('detail-cover'), ph = el('detail-cover-ph');
@@ -2181,9 +2179,7 @@ function renderAdminBooksTable() {
       <td><div class="cover-cell">${cover}<button class="btn btn-ghost btn-xs" onclick="showAdminBookDetails(${b.id})">Details</button></div></td>
       <td><strong>${esc(b.title)}</strong></td>
       <td>${esc(b.author || '—')}</td>
-      <td>${esc(b.genre  || '—')}</td>
       <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
-      <td>${b.release_year || '—'}</td>
       <td>${esc(b.added_by_name || '—')}</td>
       <td>${fmtDate(b.submitted_at || b.added_at)}</td>
       <td class="td-voting">${votingCb}</td>
@@ -2202,9 +2198,7 @@ function renderAdminBooksTable() {
       ? `<img class="bc-cover-img" src="${b.cover_url}" alt="" onerror="this.style.display='none'">`
       : `<div class="bc-cover-ph">&#128214;</div>`;
     const metaParts = [
-      b.release_year || null,
       b.page_count ? `${Number(b.page_count).toLocaleString()} pp` : null,
-      b.genre ? b.genre.split(',')[0].trim() : null,
     ].filter(Boolean);
     const hasSynopsis = !!b.description;
     const votingCardCb = `<input type="checkbox" class="voting-cb" ${b.active_for_voting ? 'checked' : ''} ${canToggleVoting ? '' : 'disabled'}
@@ -2927,7 +2921,6 @@ function renderDrilldownBooks(ctx, title, books) {
       <td><div class="cover-cell">${cover}${detailsBtn}</div></td>
       <td><strong>${esc(b.title)}</strong></td>
       <td>${esc(b.author || '—')}</td>
-      <td>${esc(b.genre  || '—')}</td>
       <td>${b.page_count ? Number(b.page_count).toLocaleString() : '—'}</td>
       <td>${esc(b.added_by_name || '—')}</td>
       <td>${fmtDate(b.submitted_at||b.added_at)}</td>
@@ -2958,7 +2951,7 @@ function renderDrilldownBooks(ctx, title, books) {
       ${books.length
         ? `<div class="drilldown-table-wrap"><table class="drilldown-table">
             <thead><tr>
-              <th>Cover</th><th>Title</th><th>Author</th><th>Genre</th><th>Pages</th><th>Submitted By</th><th>Date</th><th>Status</th>
+              <th>Cover</th><th>Title</th><th>Author</th><th>Pages</th><th>Submitted By</th><th>Date</th><th>Status</th>
             </tr></thead>
             <tbody>${tableRows}</tbody>
           </table></div>
