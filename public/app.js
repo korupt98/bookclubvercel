@@ -1868,9 +1868,22 @@ function populateAdminClubSelect() {
     : `<option value="">No clubs yet</option>`;
   if (allClubs.length) adminClubId = allClubs[0].id;
   sel.onchange = () => {
-    adminClubId = parseInt(sel.value);
-    const active = document.querySelector('[data-admin-tab].active');
-    if (active) active.click();
+    const pendingId = parseInt(sel.value);
+    if (pendingId === adminClubId) return;
+    // Revert immediately — only commit after confirmation
+    sel.value = String(adminClubId);
+    const oldName = allClubs.find(c => c.id === adminClubId)?.name || 'current club';
+    const newName = allClubs.find(c => c.id === pendingId)?.name   || 'new club';
+    confirmAction(
+      'Switch Club?',
+      `Switch from "${oldName}" to "${newName}"? Type "yes" to confirm.`,
+      () => {
+        adminClubId = pendingId;
+        sel.value = String(pendingId);
+        const active = document.querySelector('[data-admin-tab].active');
+        if (active) active.click();
+      }
+    );
   };
 }
 
