@@ -257,6 +257,7 @@ async function logout() {
   try { await api('/api/auth/logout', 'POST'); } catch {}
   authToken = null;
   localStorage.removeItem('bc_token');
+  sessionStorage.removeItem('bc_club_id');
   location.reload();
 }
 el('member-logout-btn').addEventListener('click', logout);
@@ -426,7 +427,13 @@ function showMember() {
   }
   setupMemberClubSwitcher(); // refresh club list each time (safe: uses onchange)
   if (allClubs.length) {
-    currentClubId = allClubs[0].id;
+    const savedId   = parseInt(sessionStorage.getItem('bc_club_id') || '0');
+    const validSaved = savedId && allClubs.find(c => c.id === savedId);
+    currentClubId   = validSaved ? savedId : allClubs[0].id;
+    sessionStorage.setItem('bc_club_id', String(currentClubId));
+    // Sync switcher dropdown to the restored club
+    const switcher = el('club-switcher');
+    if (switcher && allClubs.length > 1) switcher.value = String(currentClubId);
     loadMemberClub();
     loadMemberStats();
   }
@@ -438,7 +445,18 @@ function setupMemberClubSwitcher() {
   const sel  = el('club-switcher');
   wrap.classList.remove('hidden');
   sel.innerHTML = allClubs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-  sel.onchange = () => { currentClubId = parseInt(sel.value); loadMemberClub(); };
+  sel.onchange = () => {
+    const newId = parseInt(sel.value);
+    if (newId === currentClubId) return;
+    const newName = allClubs.find(c => c.id === newId)?.name || 'this club';
+    if (!confirm(`Switch to "${newName}"?`)) {
+      sel.value = String(currentClubId); // revert the dropdown
+      return;
+    }
+    currentClubId = newId;
+    sessionStorage.setItem('bc_club_id', String(newId));
+    loadMemberClub();
+  };
 }
 
 function setupMemberTabs() {
