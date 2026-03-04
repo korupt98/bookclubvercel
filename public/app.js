@@ -470,9 +470,10 @@ function setupMemberTabs() {
       btn.classList.add('active');
       el(`tab-${btn.dataset.tab}`).classList.add('active');
       sessionStorage.setItem('bc_active_tab', btn.dataset.tab);
-      if (btn.dataset.tab === 'vote')   refreshVoteTab();
-      if (btn.dataset.tab === 'stats')  loadMemberStats();
-      if (btn.dataset.tab === 'manage') loadManageTab();
+      if (btn.dataset.tab === 'vote')    refreshVoteTab();
+      if (btn.dataset.tab === 'stats')   loadMemberStats();
+      if (btn.dataset.tab === 'manage')  loadManageTab();
+      if (btn.dataset.tab === 'account') el('acct-email').value = currentUser?.email || '';
     });
   });
 }
@@ -3185,6 +3186,15 @@ async function changeMyPassword() {
     el('acct-current-pwd').value = el('acct-new-pwd').value = el('acct-confirm-pwd').value = '';
     showMsg('acct-pwd-msg', 'Password updated!', 'success');
   } catch (e) { showMsg('acct-pwd-msg', e.message, 'error'); }
+}
+
+async function updateMyEmail() {
+  const email = el('acct-email').value.trim();
+  try {
+    const u = await api('/api/auth/me/email', 'PATCH', { email: email || null });
+    currentUser.email = u.email;
+    showMsg('acct-email-msg', 'Email updated!', 'success');
+  } catch (e) { showMsg('acct-email-msg', e.message, 'error'); }
 }
 
 /* ── Utility ─────────────────────────────────────────── */

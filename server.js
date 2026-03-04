@@ -186,6 +186,21 @@ app.post('/api/auth/change-password', requireAuth, async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
+app.patch('/api/auth/me/email', requireAuth, async (req, res) => {
+  const { email } = req.body;
+  const trimmed = email?.trim() || null;
+  try {
+    if (trimmed) {
+      const existing = await db.getUserByEmail(trimmed);
+      if (existing && existing.id !== req.user.id)
+        return res.status(409).json({ error: 'That email is already in use' });
+    }
+    const u = await db.updateUser(req.user.id, { email: trimmed });
+    const { password_hash, ...safe } = u;
+    res.json(safe);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
 app.get('/api/auth/me', requireAuth, async (req, res) => {
   try {
     const clubs = await db.getUserBookclubs(req.user.id);
