@@ -436,7 +436,7 @@ function showMember() {
     const switcher = el('club-switcher');
     if (switcher && allClubs.length > 1) switcher.value = String(currentClubId);
     loadMemberClub();
-    loadMemberStats();
+    restoreMemberTab() || loadMemberStats();
   }
 }
 
@@ -473,11 +473,21 @@ function setupMemberTabs() {
       qsa('#member-app .tab-pane').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       el(`tab-${btn.dataset.tab}`).classList.add('active');
+      sessionStorage.setItem('bc_active_tab', btn.dataset.tab);
       if (btn.dataset.tab === 'vote')   refreshVoteTab();
       if (btn.dataset.tab === 'stats')  loadMemberStats();
       if (btn.dataset.tab === 'manage') loadManageTab();
     });
   });
+}
+
+function restoreMemberTab() {
+  const saved = sessionStorage.getItem('bc_active_tab');
+  if (!saved) return false;
+  const btn = document.querySelector(`[data-tab="${saved}"]`);
+  if (!btn || btn.classList.contains('hidden')) return false;
+  btn.click();
+  return true;
 }
 
 function setupMemberListeners() {
