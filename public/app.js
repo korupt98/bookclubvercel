@@ -1257,6 +1257,14 @@ async function renderVoteTab() {
     } else {
       el('edit-vote-btn').classList.add('hidden');
     }
+    try {
+      const { book_ids } = await api(`/api/bookclubs/${currentClubId}/voting/my-vote`);
+      const votedBooks = book_ids.map(id => allBooks.find(b => b.id === id)).filter(Boolean);
+      el('my-voted-books').innerHTML = votedBooks.length
+        ? `<div style="font-weight:600;margin-bottom:.2rem">Your picks:</div>` +
+          votedBooks.map(b => `<div class="dim">· ${esc(b.title)}</div>`).join('')
+        : '';
+    } catch { el('my-voted-books').innerHTML = ''; }
     if (votingSession.results_visible) {
       await showPublicResults();
       el('results-area').classList.remove('hidden');
@@ -1264,6 +1272,7 @@ async function renderVoteTab() {
     return;
   }
   el('edit-vote-btn').classList.add('hidden');
+  el('my-voted-books').innerHTML = '';
   if (votingSession.results_visible) {
     await showPublicResults();
     el('results-area').classList.remove('hidden');
@@ -1374,8 +1383,7 @@ async function submitVote() {
   if (selectedVoteIds.length !== (votingSession?.votes_per_member || 2)) return;
   try {
     await api(`/api/bookclubs/${currentClubId}/voting/vote`, 'POST', { book_ids: selectedVoteIds });
-    el('vote-area').classList.add('hidden');
-    el('vote-already-voted').classList.remove('hidden');
+    await renderVoteTab();
   } catch (e) {
     const p = el('vote-msg'); p.textContent = e.message; p.className = 'msg msg-error'; p.classList.remove('hidden');
   }

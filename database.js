@@ -461,6 +461,16 @@ async function insertVote({ session_id, voter_user_id, voter_name, book_ids }) {
   return vote;
 }
 
+async function getMyVote(sessionId, userId) {
+  const { rows } = await pool.query(
+    `SELECT ve.book_id FROM votes v
+     JOIN vote_entries ve ON ve.vote_id = v.id
+     WHERE v.session_id = $1 AND v.voter_user_id = $2`,
+    [sessionId, userId]
+  );
+  return rows.map(r => r.book_id);
+}
+
 async function deleteOwnVote(sessionId, userId) {
   const { rows } = await pool.query(
     'SELECT id FROM votes WHERE session_id = $1 AND voter_user_id = $2',
@@ -677,7 +687,7 @@ module.exports = {
   getPublicClubsWithBooks,
   // voting
   getLatestSession, getOpenSession, insertSession, closeSession, reopenSession, getVotingSession,
-  hasVoted, insertVote, deleteOwnVote, getResults,
+  hasVoted, insertVote, getMyVote, deleteOwnVote, getResults,
   getAllSessions, getSessionVoteDetails, deleteVotingSession, deleteVote, toggleResultsVisible,
   // analytics
   getAnalytics,

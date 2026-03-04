@@ -709,6 +709,15 @@ app.get('/api/bookclubs/:clubId/voting/results/:sid', requireClubAccess, async (
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
+app.get('/api/bookclubs/:clubId/voting/my-vote', requireClubAccess, async (req, res) => {
+  try {
+    const session = await db.getLatestSession(parseInt(req.params.clubId));
+    if (!session) return res.json({ book_ids: [] });
+    const book_ids = await db.getMyVote(session.id, req.user.id);
+    res.json({ book_ids });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
 app.delete('/api/bookclubs/:clubId/voting/vote', requireClubAccess, async (req, res) => {
   try {
     const session = await db.getLatestSession(parseInt(req.params.clubId));
