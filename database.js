@@ -425,7 +425,7 @@ async function closeSession(sid) {
 
 async function reopenSession(sid) {
   const { rows } = await pool.query(
-    'UPDATE voting_sessions SET is_closed = FALSE, closed_at = NULL WHERE id = $1 RETURNING *',
+    'UPDATE voting_sessions SET is_closed = FALSE, closed_at = NULL, results_visible = FALSE WHERE id = $1 RETURNING *',
     [sid]
   );
   return rows[0] || null;
