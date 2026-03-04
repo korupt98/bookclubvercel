@@ -98,7 +98,7 @@ app.get('/api/public/clubs', async (req, res) => {
 app.get('/api/public/users', async (req, res) => {
   try {
     const users = await db.getAllUsers();
-    res.json(users.map(u => ({ id: u.id, name: u.name })));
+    res.json(users.filter(u => u.role !== 'clubadmin' && u.role !== 'superadmin').map(u => ({ id: u.id, name: u.name })));
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
