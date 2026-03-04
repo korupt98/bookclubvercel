@@ -423,6 +423,14 @@ async function closeSession(sid) {
   return rows[0] || null;
 }
 
+async function reopenSession(sid) {
+  const { rows } = await pool.query(
+    'UPDATE voting_sessions SET is_closed = FALSE, closed_at = NULL WHERE id = $1 RETURNING *',
+    [sid]
+  );
+  return rows[0] || null;
+}
+
 async function getVotingSession(sid) {
   const { rows } = await pool.query(
     'SELECT * FROM voting_sessions WHERE id = $1', [sid]
@@ -451,6 +459,16 @@ async function insertVote({ session_id, voter_user_id, voter_name, book_ids }) {
     );
   }
   return vote;
+}
+
+async function deleteOwnVote(sessionId, userId) {
+  const { rows } = await pool.query(
+    'SELECT id FROM votes WHERE session_id = $1 AND voter_user_id = $2',
+    [sessionId, userId]
+  );
+  if (rows[0]) {
+    await pool.query('DELETE FROM votes WHERE id = $1', [rows[0].id]);
+  }
 }
 
 async function getResults(sessionId, clubId = null) {
@@ -658,8 +676,8 @@ module.exports = {
   getBooks, getBook, bookExistsInClub, insertBook, updateBook, deleteBook,
   getPublicClubsWithBooks,
   // voting
-  getLatestSession, getOpenSession, insertSession, closeSession, getVotingSession,
-  hasVoted, insertVote, getResults,
+  getLatestSession, getOpenSession, insertSession, closeSession, reopenSession, getVotingSession,
+  hasVoted, insertVote, deleteOwnVote, getResults,
   getAllSessions, getSessionVoteDetails, deleteVotingSession, deleteVote, toggleResultsVisible,
   // analytics
   getAnalytics,

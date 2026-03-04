@@ -651,6 +651,17 @@ app.patch('/api/bookclubs/:clubId/voting/session/:sid/close', requireClubAdmin, 
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
+app.patch('/api/bookclubs/:clubId/voting/session/:sid/reopen', requireClubAdmin, async (req, res) => {
+  try {
+    const existing = await db.getOpenSession(parseInt(req.params.clubId));
+    if (existing && existing.id !== parseInt(req.params.sid))
+      return res.status(409).json({ error: 'Another session is already open' });
+    const s = await db.reopenSession(parseInt(req.params.sid));
+    if (!s) return res.status(404).json({ error: 'Not found' });
+    res.json(s);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
 app.post('/api/bookclubs/:clubId/voting/vote', requireClubAccess, async (req, res) => {
   const clubId = parseInt(req.params.clubId);
   const { book_ids } = req.body;
@@ -684,12 +695,26 @@ app.get('/api/bookclubs/:clubId/voting/results/:sid', requireClubAccess, async (
   try {
     const session = await db.getVotingSession(parseInt(req.params.sid));
     if (!session) return res.status(404).json({ error: 'Not found' });
-    const clubRole    = await db.getClubRole(req.user.id, parseInt(req.params.clubId));
+    const clubRole     = await db.getClubRole(req.user.id, parseInt(req.params.clubId));
     const isPrivileged = req.user.role === 'superadmin' || clubRole === 'admin';
     if (!session.is_closed && !isPrivileged && !session.results_visible) {
       return res.status(403).json({ error: 'Results hidden until voting closes' });
     }
-    res.json(await db.getResults(session.id, parseInt(req.params.clubId)));
+    const data = await db.getResults(session.id, parseInt(req.params.clubId));
+    // Admins see voter status only while session is open (no vote counts or book rankings)
+    if (!session.is_closed && isPrivileged) {
+      return res.json({ results: [], total_voters: data.total_voters, voter_status: data.voter_status, results_hidden: true });
+    }
+    res.json(data);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
+app.delete('/api/bookclubs/:clubId/voting/vote', requireClubAccess, async (req, res) => {
+  try {
+    const session = await db.getLatestSession(parseInt(req.params.clubId));
+    if (!session || session.is_closed) return res.status(400).json({ error: 'No open voting session' });
+    await db.deleteOwnVote(session.id, req.user.id);
+    res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
@@ -710,10 +735,14 @@ app.get('/api/bookclubs/:clubId/voting/sessions', requireClubAdmin, async (req, 
   catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
-// Vote details for one session (club admin)
+// Vote details for one session (club admin) — only after session is closed
 app.get('/api/bookclubs/:clubId/voting/sessions/:sid/votes', requireClubAdmin, async (req, res) => {
-  try { res.json(await db.getSessionVoteDetails(parseInt(req.params.sid))); }
-  catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+  try {
+    const session = await db.getVotingSession(parseInt(req.params.sid));
+    if (!session) return res.status(404).json({ error: 'Not found' });
+    if (!session.is_closed) return res.status(403).json({ error: 'Vote details are hidden until the session is closed' });
+    res.json(await db.getSessionVoteDetails(parseInt(req.params.sid)));
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
 // Delete a session + its votes (club admin)

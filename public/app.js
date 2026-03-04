@@ -500,6 +500,7 @@ function setupMemberListeners() {
   el('show-member-add-book-btn').addEventListener('click', () => el('member-add-book-form').classList.toggle('hidden'));
   el('member-cancel-add-book-btn').addEventListener('click', () => el('member-add-book-form').classList.add('hidden'));
   el('submit-vote-btn').addEventListener('click', submitVote);
+  el('edit-vote-btn').addEventListener('click', editVote);
 
   // Manage tab
   el('manage-create-user-btn').addEventListener('click', createMemberFromManage);
@@ -511,6 +512,7 @@ function setupMemberListeners() {
   el('nm-clear-btn').addEventListener('click', clearNextMeeting);
   el('manage-create-session-btn').addEventListener('click', manageCreateSession);
   el('manage-close-session-btn').addEventListener('click', manageCloseSession);
+  el('manage-reopen-session-btn').addEventListener('click', manageReopenSession);
   // Stats tab
   el('stats-run-btn').addEventListener('click', loadMemberStats);
   el('stats-from').addEventListener('change', () => applyAnalyticsFilters('stats'));
@@ -1240,12 +1242,18 @@ async function renderVoteTab() {
   }
   if (has_voted) {
     el('vote-already-voted').classList.remove('hidden');
+    if (!votingSession.is_closed) {
+      el('edit-vote-btn').classList.remove('hidden');
+    } else {
+      el('edit-vote-btn').classList.add('hidden');
+    }
     if (votingSession.results_visible) {
       await showPublicResults();
       el('results-area').classList.remove('hidden');
     }
     return;
   }
+  el('edit-vote-btn').classList.add('hidden');
   if (votingSession.results_visible) {
     await showPublicResults();
     el('results-area').classList.remove('hidden');
@@ -1358,6 +1366,16 @@ async function submitVote() {
     await api(`/api/bookclubs/${currentClubId}/voting/vote`, 'POST', { book_ids: selectedVoteIds });
     el('vote-area').classList.add('hidden');
     el('vote-already-voted').classList.remove('hidden');
+  } catch (e) {
+    const p = el('vote-msg'); p.textContent = e.message; p.className = 'msg msg-error'; p.classList.remove('hidden');
+  }
+}
+
+async function editVote() {
+  if (!votingSession || votingSession.is_closed) return;
+  try {
+    await api(`/api/bookclubs/${currentClubId}/voting/vote`, 'DELETE');
+    await renderVoteTab();
   } catch (e) {
     const p = el('vote-msg'); p.textContent = e.message; p.className = 'msg msg-error'; p.classList.remove('hidden');
   }
@@ -1569,24 +1587,25 @@ async function loadManageVoting() {
 }
 
 function renderManageVotingPanel() {
-  const statusBox = el('manage-session-status');
-  const createBtn = el('manage-create-session-btn');
-  const closeBtn  = el('manage-close-session-btn');
+  const statusBox  = el('manage-session-status');
+  const createBtn  = el('manage-create-session-btn');
+  const closeBtn   = el('manage-close-session-btn');
+  const reopenBtn  = el('manage-reopen-session-btn');
   const resultsCard = el('manage-results-card');
   if (!manageVotingSession) {
     statusBox.style.cssText = 'background:#fee2e2;color:#991b1b';
     statusBox.textContent   = 'No active voting session.';
-    createBtn.classList.remove('hidden'); closeBtn.classList.add('hidden');
+    createBtn.classList.remove('hidden'); closeBtn.classList.add('hidden'); reopenBtn.classList.add('hidden');
     resultsCard.classList.add('hidden');
   } else if (!manageVotingSession.is_closed) {
     statusBox.style.cssText = 'background:#dcfce7;color:#166534';
     statusBox.textContent   = `Voting open — started ${fmtDate(manageVotingSession.created_at)}`;
-    createBtn.classList.add('hidden'); closeBtn.classList.remove('hidden');
+    createBtn.classList.add('hidden'); closeBtn.classList.remove('hidden'); reopenBtn.classList.add('hidden');
     resultsCard.classList.remove('hidden');
   } else {
     statusBox.style.cssText = 'background:#dbeafe;color:#1e40af';
     statusBox.textContent   = `Voting closed on ${fmtDate(manageVotingSession.closed_at)}`;
-    createBtn.classList.remove('hidden'); closeBtn.classList.add('hidden');
+    createBtn.classList.remove('hidden'); closeBtn.classList.add('hidden'); reopenBtn.classList.remove('hidden');
     resultsCard.classList.remove('hidden');
   }
 }
@@ -1595,6 +1614,7 @@ async function loadManageResults() {
   if (!manageVotingSession) return;
   try {
     const data = await api(`/api/bookclubs/${currentClubId}/voting/results/${manageVotingSession.id}`);
+    el('manage-results-title').textContent = manageVotingSession.is_closed ? 'Results' : 'Who Has Voted';
     renderResults(data, el('manage-results-list'), el('manage-results-footer'), el('manage-voter-status'));
   } catch {}
 }
@@ -1725,6 +1745,15 @@ async function manageCloseSession() {
   } catch (e) { alert(e.message); }
 }
 
+async function manageReopenSession() {
+  if (!manageVotingSession || !confirm('Reopen voting? Members will be able to vote again.')) return;
+  try {
+    manageVotingSession = await api(`/api/bookclubs/${currentClubId}/voting/session/${manageVotingSession.id}/reopen`, 'PATCH');
+    renderManageVotingPanel();
+    await loadManageResults();
+  } catch (e) { alert(e.message); }
+}
+
 /* ── Voting History ──────────────────────────────────── */
 async function loadVotingHistory(ctx, clubId) {
   const listId = ctx === 'admin' ? 'admin-voting-history' : 'manage-voting-history';
@@ -1774,7 +1803,13 @@ async function toggleVoteDetails(ctx, sessionId, clubId, btn) {
       : `<p class="dim" style="padding:.5rem 0">No votes recorded.</p>`;
     panel.classList.remove('hidden');
     btn.textContent = 'Hide Votes';
-  } catch { btn.textContent = 'Show Votes'; }
+  } catch (e) {
+    if (e.message && e.message.includes('hidden until the session is closed')) {
+      panel.innerHTML = `<p class="dim" style="padding:.5rem 0">Individual vote details are hidden until the session is closed.</p>`;
+      panel.classList.remove('hidden');
+      btn.textContent = 'Hide Votes';
+    } else { btn.textContent = 'Show Votes'; }
+  }
 }
 
 async function deleteSessionHistory(ctx, sessionId, clubId) {
@@ -1911,6 +1946,7 @@ function setupAdminListeners() {
   el('admin-nm-clear-btn').addEventListener('click', clearAdminNextMeeting);
   el('admin-create-session-btn').addEventListener('click', adminCreateSession);
   el('admin-close-session-btn').addEventListener('click', adminCloseSession);
+  el('admin-reopen-session-btn').addEventListener('click', adminReopenSession);
   el('admin-book-filter-text').addEventListener('input', renderAdminBooksTable);
   el('admin-book-filter-submitter').addEventListener('change', renderAdminBooksTable);
   el('admin-book-filter-status').addEventListener('change', renderAdminBooksTable);
@@ -2437,16 +2473,18 @@ function renderAdminVotingPanel() {
   const statusBox  = el('admin-session-status');
   const createBtn  = el('admin-create-session-btn');
   const closeBtn   = el('admin-close-session-btn');
+  const reopenBtn  = el('admin-reopen-session-btn');
   const resultsCard= el('admin-results-card');
   if (!votingSession) {
     statusBox.style.cssText = 'background:#fee2e2;color:#991b1b';
     statusBox.textContent   = 'No active voting session.';
-    createBtn.classList.remove('hidden'); closeBtn.classList.add('hidden');
+    createBtn.classList.remove('hidden'); closeBtn.classList.add('hidden'); reopenBtn.classList.add('hidden');
     resultsCard.classList.add('hidden');
+    document.getElementById('admin-toggle-results-btn')?.remove();
   } else if (!votingSession.is_closed) {
     statusBox.style.cssText = 'background:#dcfce7;color:#166534';
     statusBox.textContent   = `Voting open — started ${fmtDate(votingSession.created_at)}`;
-    createBtn.classList.add('hidden'); closeBtn.classList.remove('hidden');
+    createBtn.classList.add('hidden'); closeBtn.classList.remove('hidden'); reopenBtn.classList.add('hidden');
     resultsCard.classList.remove('hidden');
     if (isSuperAdmin()) {
       const toggleBtn = document.getElementById('admin-toggle-results-btn') || (() => {
@@ -2464,8 +2502,9 @@ function renderAdminVotingPanel() {
   } else {
     statusBox.style.cssText = 'background:#dbeafe;color:#1e40af';
     statusBox.textContent   = `Voting closed on ${fmtDate(votingSession.closed_at)}`;
-    createBtn.classList.remove('hidden'); closeBtn.classList.add('hidden');
+    createBtn.classList.remove('hidden'); closeBtn.classList.add('hidden'); reopenBtn.classList.remove('hidden');
     resultsCard.classList.remove('hidden');
+    document.getElementById('admin-toggle-results-btn')?.remove();
   }
 }
 
@@ -2473,6 +2512,7 @@ async function loadAdminResults() {
   if (!votingSession) return;
   try {
     const data = await api(`/api/bookclubs/${adminClubId}/voting/results/${votingSession.id}`);
+    el('admin-results-title').textContent = votingSession.is_closed ? 'Results' : 'Who Has Voted';
     renderResults(data, el('admin-results-list'), el('admin-results-footer'), el('admin-voter-status'));
   } catch {}
 }
@@ -2486,6 +2526,15 @@ async function adminCloseSession() {
   try {
     votingSession = await api(`/api/bookclubs/${adminClubId}/voting/session/${votingSession.id}/close`, 'PATCH');
     document.getElementById('admin-toggle-results-btn')?.remove();
+    renderAdminVotingPanel();
+    await loadAdminResults();
+  } catch (e) { alert(e.message); }
+}
+
+async function adminReopenSession() {
+  if (!votingSession || !confirm('Reopen voting? Members will be able to vote again.')) return;
+  try {
+    votingSession = await api(`/api/bookclubs/${adminClubId}/voting/session/${votingSession.id}/reopen`, 'PATCH');
     renderAdminVotingPanel();
     await loadAdminResults();
   } catch (e) { alert(e.message); }
@@ -3020,8 +3069,11 @@ function closeAnalyticsDrilldown(ctx) {
 
 /* ── Shared helpers ──────────────────────────────────── */
 function renderResults(data, listEl, footerEl, voterEl) {
-  const { results, total_voters, voter_status } = data;
-  if (!results?.length) {
+  const { results, total_voters, voter_status, results_hidden } = data;
+  if (results_hidden) {
+    listEl.innerHTML = `<p class="dim">Vote counts are hidden until the session is closed.</p>`;
+    if (footerEl) footerEl.textContent = '';
+  } else if (!results?.length) {
     listEl.innerHTML = `<p class="dim">No votes yet.</p>`;
     if (footerEl) footerEl.textContent = '';
   } else {
