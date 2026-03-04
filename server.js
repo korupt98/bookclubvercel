@@ -744,6 +744,14 @@ app.get('/api/bookclubs/:clubId/voting/sessions', requireClubAdmin, async (req, 
   catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
+// List closed sessions for members
+app.get('/api/bookclubs/:clubId/voting/history', requireClubAccess, async (req, res) => {
+  try {
+    const sessions = await db.getAllSessions(parseInt(req.params.clubId));
+    res.json(sessions.filter(s => s.is_closed));
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
 // Vote details for one session (club admin) — only after session is closed
 app.get('/api/bookclubs/:clubId/voting/sessions/:sid/votes', requireClubAdmin, async (req, res) => {
   try {

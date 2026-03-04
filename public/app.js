@@ -1225,6 +1225,59 @@ async function refreshVoteTab() {
   try { votingSession = await api(`/api/bookclubs/${currentClubId}/voting/session`); }
   catch { votingSession = null; }
   await renderVoteTab();
+  await loadMemberVoteHistory();
+}
+
+async function loadMemberVoteHistory() {
+  const panel = el('vote-history');
+  try {
+    const sessions = await api(`/api/bookclubs/${currentClubId}/voting/history`);
+    // Exclude the current session if it's already closed and shown above
+    const history = votingSession ? sessions.filter(s => s.id !== votingSession.id) : sessions;
+    if (!history.length) { panel.classList.add('hidden'); return; }
+    panel.classList.remove('hidden');
+    panel.innerHTML = `<h3 style="margin-bottom:.75rem">Previous Votes</h3>` +
+      history.map((s, i) => `
+        <div class="session-history-card" style="margin-bottom:.75rem">
+          <div class="sh-header" style="cursor:pointer" onclick="toggleMemberVoteHistory(${s.id},this)">
+            <div class="sh-info">
+              <span class="sh-date">Closed ${fmtDate(s.closed_at)}</span>
+              <span class="sh-status dim">${s.voter_count} voter${s.voter_count !== 1 ? 's' : ''} &middot; ${s.votes_per_member || 2} pick${(s.votes_per_member || 2) !== 1 ? 's' : ''} each</span>
+            </div>
+            <span class="sh-toggle-icon">${i === 0 ? '▴' : '▾'}</span>
+          </div>
+          <div id="mvh-${s.id}" class="${i === 0 ? '' : 'hidden'}" style="margin-top:.5rem">
+            <div id="mvh-results-${s.id}"><p class="dim">Loading…</p></div>
+          </div>
+        </div>`).join('');
+    // Load the most recent (first) session's results immediately
+    loadMemberHistoryResults(history[0].id);
+  } catch { panel.classList.add('hidden'); }
+}
+
+function toggleMemberVoteHistory(sessionId, headerEl) {
+  const body = el(`mvh-${sessionId}`);
+  const icon = headerEl.querySelector('.sh-toggle-icon');
+  const isHidden = body.classList.toggle('hidden');
+  icon.textContent = isHidden ? '▾' : '▴';
+  if (!isHidden && el(`mvh-results-${sessionId}`).querySelector('.dim')?.textContent === 'Loading…') {
+    loadMemberHistoryResults(sessionId);
+  }
+}
+
+async function loadMemberHistoryResults(sessionId) {
+  const container = el(`mvh-results-${sessionId}`);
+  if (!container) return;
+  try {
+    const data = await api(`/api/bookclubs/${currentClubId}/voting/results/${sessionId}`);
+    const listEl   = document.createElement('div');
+    const footerEl = document.createElement('p');
+    footerEl.className = 'dim mt-sm';
+    container.innerHTML = '';
+    container.appendChild(listEl);
+    container.appendChild(footerEl);
+    renderResults(data, listEl, footerEl);
+  } catch { container.innerHTML = `<p class="dim">Results unavailable.</p>`; }
 }
 
 async function renderVoteTab() {
