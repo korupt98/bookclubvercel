@@ -453,16 +453,12 @@ function setupMemberClubSwitcher() {
     sel.value = String(currentClubId);
     const oldName = allClubs.find(c => c.id === currentClubId)?.name || 'current club';
     const newName = allClubs.find(c => c.id === pendingId)?.name    || 'new club';
-    confirmAction(
-      'Switch Club?',
-      `Switch from "${oldName}" to "${newName}"? Type "yes" to confirm.`,
-      () => {
-        currentClubId = pendingId;
-        sessionStorage.setItem('bc_club_id', String(pendingId));
-        sel.value = String(pendingId);
-        loadMemberClub();
-      }
-    );
+    if (confirm(`Switch from "${oldName}" to "${newName}"?`)) {
+      currentClubId = pendingId;
+      sessionStorage.setItem('bc_club_id', String(pendingId));
+      sel.value = String(pendingId);
+      loadMemberClub();
+    }
   };
 }
 
@@ -1927,16 +1923,12 @@ function populateAdminClubSelect() {
     sel.value = String(adminClubId);
     const oldName = allClubs.find(c => c.id === adminClubId)?.name || 'current club';
     const newName = allClubs.find(c => c.id === pendingId)?.name   || 'new club';
-    confirmAction(
-      'Switch Club?',
-      `Switch from "${oldName}" to "${newName}"? Type "yes" to confirm.`,
-      () => {
-        adminClubId = pendingId;
-        sel.value = String(pendingId);
-        const active = document.querySelector('[data-admin-tab].active');
-        if (active) active.click();
-      }
-    );
+    if (confirm(`Switch from "${oldName}" to "${newName}"?`)) {
+      adminClubId = pendingId;
+      sel.value = String(pendingId);
+      const active = document.querySelector('[data-admin-tab].active');
+      if (active) active.click();
+    }
   };
 }
 
