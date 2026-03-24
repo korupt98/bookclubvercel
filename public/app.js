@@ -3159,13 +3159,14 @@ function renderResults(data, listEl, footerEl, voterEl) {
     if (footerEl) footerEl.textContent = '';
   } else {
     const max = results[0].vote_count || 1;
+    const clearWinner = results.length === 1 || results[0].vote_count > results[1].vote_count;
     listEl.innerHTML = results.map((b, i) => {
       const img = b.cover_url
         ? `<img src="${b.cover_url}" alt="" onerror="this.outerHTML='<div class=rr-ph>&#128214;</div>'">`
         : `<div class="rr-ph">&#128214;</div>`;
       return `<div class="result-row">
         ${img}<div class="rr-info">
-          <div class="rr-title">${esc(b.title)}${i === 0 ? ' &#127942;' : ''}</div>
+          <div class="rr-title">${esc(b.title)}${i === 0 && clearWinner ? ' &#127942;' : ''}</div>
           <div class="rr-author">${esc(b.author || '')}</div>
         </div>
         <div class="rr-bar-wrap"><div class="rr-bar" style="width:${Math.round(b.vote_count/max*100)}%"></div></div>
