@@ -20,6 +20,7 @@ let editCoverUrl          = null;  // admin edit modal (null = no change)
 let memberEditCoverUrl    = null;  // member edit modal (null = no change)
 let searchTimer      = null;
 let adminSearchTimer = null;
+let voterPollInterval = null;
 let _memberSetup     = false;
 let sortField        = 'added_at';
 let sortDir          = 'desc';
@@ -470,6 +471,7 @@ function setupMemberTabs() {
       btn.classList.add('active');
       el(`tab-${btn.dataset.tab}`).classList.add('active');
       sessionStorage.setItem('bc_active_tab', btn.dataset.tab);
+      if (btn.dataset.tab !== 'manage')  stopVoterPolling();
       if (btn.dataset.tab === 'vote')    refreshVoteTab();
       if (btn.dataset.tab === 'stats')   loadMemberStats();
       if (btn.dataset.tab === 'manage')  loadManageTab();
@@ -1651,6 +1653,7 @@ async function loadManageVoting() {
   catch { manageVotingSession = null; }
   renderManageVotingPanel();
   if (manageVotingSession) await loadManageResults();
+  startVoterPolling();
   await loadVotingHistory('manage', currentClubId);
 }
 
@@ -1685,6 +1688,19 @@ async function loadManageResults() {
     el('manage-results-title').textContent = manageVotingSession.is_closed ? 'Results' : 'Who Has Voted';
     renderResults(data, el('manage-results-list'), el('manage-results-footer'), el('manage-voter-status'));
   } catch {}
+}
+
+function startVoterPolling() {
+  stopVoterPolling();
+  if (!manageVotingSession || manageVotingSession.is_closed) return;
+  voterPollInterval = setInterval(async () => {
+    if (!manageVotingSession || manageVotingSession.is_closed) { stopVoterPolling(); return; }
+    await loadManageResults();
+  }, 5000);
+}
+
+function stopVoterPolling() {
+  if (voterPollInterval) { clearInterval(voterPollInterval); voterPollInterval = null; }
 }
 
 async function manageCreateSession() {
