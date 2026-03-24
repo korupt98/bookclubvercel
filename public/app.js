@@ -1694,7 +1694,8 @@ function startVoterPolling() {
   stopVoterPolling();
   if (!manageVotingSession || manageVotingSession.is_closed) return;
   voterPollInterval = setInterval(async () => {
-    if (!manageVotingSession || manageVotingSession.is_closed) { stopVoterPolling(); return; }
+    const manageTabActive = el('tab-manage')?.classList.contains('active');
+    if (!manageTabActive || !manageVotingSession || manageVotingSession.is_closed) { stopVoterPolling(); return; }
     await loadManageResults();
   }, 5000);
 }
