@@ -259,7 +259,7 @@ async function logout() {
   try { await api('/api/auth/logout', 'POST'); } catch {}
   authToken = null;
   localStorage.removeItem('bc_token');
-  sessionStorage.removeItem('bc_club_id');
+  localStorage.removeItem('bc_club_id');
   location.reload();
 }
 el('member-logout-btn').addEventListener('click', logout);
@@ -429,10 +429,10 @@ function showMember() {
   }
   setupMemberClubSwitcher(); // refresh club list each time (safe: uses onchange)
   if (allClubs.length) {
-    const savedId   = parseInt(sessionStorage.getItem('bc_club_id') || '0');
+    const savedId   = parseInt(localStorage.getItem('bc_club_id') || '0');
     const validSaved = savedId && allClubs.find(c => c.id === savedId);
     currentClubId   = validSaved ? savedId : allClubs[0].id;
-    sessionStorage.setItem('bc_club_id', String(currentClubId));
+    localStorage.setItem('bc_club_id', String(currentClubId));
     // Sync switcher dropdown to the restored club
     const switcher = el('club-switcher');
     if (switcher && allClubs.length > 1) switcher.value = String(currentClubId);
@@ -456,7 +456,7 @@ function setupMemberClubSwitcher() {
     const newName = allClubs.find(c => c.id === pendingId)?.name    || 'new club';
     if (confirm(`Switch from "${oldName}" to "${newName}"?`)) {
       currentClubId = pendingId;
-      sessionStorage.setItem('bc_club_id', String(pendingId));
+      localStorage.setItem('bc_club_id', String(pendingId));
       sel.value = String(pendingId);
       loadMemberClub();
     }
