@@ -339,8 +339,8 @@ async function getPublicClubsWithBooks() {
     );
     const { rows: stats } = await pool.query(
       `SELECT
-         COUNT(*) FILTER (WHERE selected) AS books_read,
-         COALESCE(SUM(page_count) FILTER (WHERE selected AND page_count IS NOT NULL), 0) AS pages_read
+         COUNT(*) FILTER (WHERE selected AND COALESCE(discussion_date, selected_at::date) <= CURRENT_DATE) AS books_read,
+         COALESCE(SUM(page_count) FILTER (WHERE selected AND page_count IS NOT NULL AND COALESCE(discussion_date, selected_at::date) <= CURRENT_DATE), 0) AS pages_read
        FROM books WHERE bookclub_id = $1`,
       [club.id]
     );

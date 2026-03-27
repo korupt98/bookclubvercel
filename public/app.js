@@ -2861,7 +2861,12 @@ function confirmDeleteGenre(id, name) {
 
 /* ── Analytics ───────────────────────────────────────── */
 function computeAnalyticsFromBooks(books, members) {
-  const selected = books.filter(b => b.selected);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const selected = books.filter(b => {
+    if (!b.selected) return false;
+    const d = b.discussion_date ? new Date(b.discussion_date) : (b.selected_at ? new Date(b.selected_at) : null);
+    return d && d <= today;
+  });
   const by_user = members
     .map(u => ({
       id: u.id, name: u.name,
