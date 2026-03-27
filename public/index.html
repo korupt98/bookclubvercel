@@ -628,23 +628,7 @@
 
       <div class="section-head" style="margin-bottom:1rem">
         <h2 style="margin:0">All Users</h2>
-      </div>
-      <div class="card form-card mb-lg">
-        <h3>Create New User</h3>
-        <div class="two-col">
-          <div class="field"><label>Full Name <span class="req">*</span></label><input type="text" id="new-user-name" placeholder="Jane Smith"></div>
-          <div class="field"><label>Email <span class="hint">(optional — skip if Google-only)</span></label><input type="email" id="new-user-email" placeholder="jane@example.com"></div>
-        </div>
-        <div class="two-col">
-          <div class="field"><label>Username <span class="hint">(optional)</span></label><input type="text" id="new-user-username" placeholder="jane_smith"></div>
-          <div class="field"><label>Global Role</label>
-            <select id="new-user-role" onchange="confirmSuperadminRole(this)">
-              <option value="member">Regular User</option>
-              <option value="superadmin">Superadmin</option>
-            </select></div>
-        </div>
-        <button id="create-user-btn" class="btn btn-primary">Create &amp; Send Invite</button>
-        <p id="create-user-msg" class="msg hidden"></p>
+        <button id="create-user-btn" class="btn btn-primary btn-sm">+ New User</button>
       </div>
       <div id="users-table-wrap" class="table-scroll">
         <table>
@@ -833,6 +817,37 @@
       <button class="btn btn-secondary" onclick="closeModal('edit-member-modal')">Cancel</button>
     </div>
     <p id="edit-member-msg" class="msg hidden"></p>
+  </div>
+</div>
+
+<!-- Create User Modal -->
+<div id="create-user-modal" class="modal">
+  <div class="modal-box">
+    <h2>New User</h2>
+    <div class="two-col">
+      <div class="field"><label>Full Name <span class="req">*</span></label>
+        <input type="text" id="new-user-name" placeholder="Jane Smith"></div>
+      <div class="field"><label>Email <span class="hint">(optional)</span></label>
+        <input type="email" id="new-user-email" placeholder="jane@example.com"></div>
+    </div>
+    <div class="two-col">
+      <div class="field"><label>Username <span class="hint">(optional)</span></label>
+        <input type="text" id="new-user-username" placeholder="jane_smith"></div>
+      <div class="field"><label>Global Role</label>
+        <select id="new-user-role" onchange="confirmSuperadminRole(this)">
+          <option value="member">Regular User</option>
+          <option value="superadmin">Superadmin</option>
+        </select></div>
+    </div>
+    <div class="field">
+      <label>Book Clubs <span class="hint">(user can only log in if in at least one)</span></label>
+      <div id="new-user-clubs" class="genre-cb-wrap"></div>
+    </div>
+    <div class="row gap-sm mt-sm">
+      <button class="btn btn-primary" onclick="createUser()">Create &amp; Send Invite</button>
+      <button class="btn btn-secondary" onclick="closeModal('create-user-modal')">Cancel</button>
+    </div>
+    <p id="create-user-msg" class="msg hidden"></p>
   </div>
 </div>
 

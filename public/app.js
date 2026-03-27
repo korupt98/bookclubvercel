@@ -2096,7 +2096,7 @@ function setupAdminListeners() {
   el('show-create-club-btn').addEventListener('click', () => el('create-club-form').classList.toggle('hidden'));
   el('cancel-create-club-btn').addEventListener('click', () => el('create-club-form').classList.add('hidden'));
   el('create-club-btn').addEventListener('click', createClub);
-  el('create-user-btn').addEventListener('click', createUser);
+  el('create-user-btn').addEventListener('click', openCreateUserModal);
   el('admin-book-search').addEventListener('input', () => {
     clearTimeout(adminSearchTimer);
     const q = el('admin-book-search').value.trim();
@@ -2193,24 +2193,36 @@ async function loadAdminMembers() {
   } catch (e) { console.error(e); }
 }
 
+function openCreateUserModal() {
+  el('new-user-name').value     = '';
+  el('new-user-email').value    = '';
+  el('new-user-username').value = '';
+  el('new-user-role').value     = 'member';
+  el('new-user-clubs').innerHTML = allClubs.map(c =>
+    `<label class="genre-cb-item"><input type="checkbox" value="${c.id}"> ${esc(c.name)}</label>`
+  ).join('');
+  el('create-user-msg').classList.add('hidden');
+  openModal('create-user-modal');
+}
+
 async function createUser() {
   const name     = el('new-user-name').value.trim();
   const email    = el('new-user-email').value.trim();
   const username = el('new-user-username').value.trim();
   const role     = el('new-user-role').value;
+  const clubIds  = [...el('new-user-clubs').querySelectorAll('input:checked')].map(cb => parseInt(cb.value));
   if (!name) return showMsg('create-user-msg', 'Name required', 'error');
   try {
     const data = await api('/api/users', 'POST', {
       name,
-      email:    email    || undefined,
-      username: username || undefined,
+      email:       email    || undefined,
+      username:    username || undefined,
       role,
+      bookclub_ids: clubIds,
     });
-    el('new-user-name').value = ''; el('new-user-email').value = '';
-    el('new-user-username').value = ''; el('new-user-role').value = 'member';
-    showMsg('create-user-msg', 'User created! Use Edit to assign them to a book club.', 'success');
+    closeModal('create-user-modal');
     if (data.temp_password) {
-      el('pwd-modal-email').textContent = email || username;
+      el('pwd-modal-email').textContent = email || username || name;
       el('pwd-modal-value').textContent  = data.temp_password;
       openModal('password-modal');
     }
