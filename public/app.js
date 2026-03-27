@@ -677,24 +677,70 @@ async function loadManageNextMeeting(clubId) {
   } catch { _nmData = null; renderNmDisplay(null); }
 }
 
+/* Shared typeahead for Next Meeting book selection */
+function setupNmBookTypeahead(inputId, dropdownId, hiddenId, books) {
+  const input    = el(inputId);
+  const dropdown = el(dropdownId);
+  const hidden   = el(hiddenId);
+  const sorted   = [...books].sort((a, b) => a.title.localeCompare(b.title));
+
+  function matches(q) {
+    if (!q) return sorted;
+    const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+    return sorted.filter(b => {
+      const hay = (b.title + ' ' + (b.author || '')).toLowerCase();
+      return words.every(w => hay.includes(w));
+    });
+  }
+
+  function renderDrop(q) {
+    const items = matches(q);
+    if (!items.length) { dropdown.classList.add('hidden'); return; }
+    dropdown.innerHTML = items.map(b =>
+      `<div class="drop-item" data-id="${b.id}">` +
+        `<span>${esc(b.title)}${b.author ? ` <span class="dim">— ${esc(b.author)}</span>` : ''}</span>` +
+      `</div>`
+    ).join('');
+    dropdown.classList.remove('hidden');
+    dropdown.querySelectorAll('.drop-item').forEach(item => {
+      item.addEventListener('mousedown', e => {
+        e.preventDefault();
+        const b = sorted.find(x => x.id === parseInt(item.dataset.id));
+        hidden.value = item.dataset.id;
+        input.value  = b ? b.title + (b.author ? ' — ' + b.author : '') : '';
+        dropdown.classList.add('hidden');
+      });
+    });
+  }
+
+  input.addEventListener('input',  () => { hidden.value = ''; renderDrop(input.value.trim()); });
+  input.addEventListener('focus',  () => renderDrop(input.value.trim()));
+  input.addEventListener('blur',   () => setTimeout(() => dropdown.classList.add('hidden'), 150));
+}
+
 /* Show the edit form for member Manage tab */
 function showNmForm() {
-  const sel = el('nm-book-select');
-  const activeBooks = allBooks.filter(b => !b.archived);
-  sel.innerHTML = '<option value="">— No book selected —</option>' +
-    activeBooks.map(b => `<option value="${b.id}">${esc(b.title)}${b.author ? ' — ' + esc(b.author) : ''}</option>`).join('');
+  const eligibleBooks = allBooks.filter(b => b.active_for_voting && !b.archived);
   const data = _nmData;
-  sel.value = '';
-  el('nm-location').value = '';
-  el('nm-date').value = '';
-  el('nm-time').value = '';
-  if (data?.next_book_id) sel.value = data.next_book_id;
+  el('nm-book-id').value    = '';
+  el('nm-book-input').value = '';
+  el('nm-location').value   = '';
+  el('nm-date').value       = '';
+  el('nm-time').value       = '';
+  if (data?.next_book_id) {
+    const b = allBooks.find(x => x.id === data.next_book_id);
+    if (b) {
+      el('nm-book-id').value    = b.id;
+      el('nm-book-input').value = b.title + (b.author ? ' — ' + b.author : '');
+    }
+  }
   if (data?.next_meeting_location) el('nm-location').value = data.next_meeting_location;
   if (data?.next_meeting_at) {
     const d = new Date(data.next_meeting_at);
     el('nm-date').value = d.toISOString().slice(0, 10);
     el('nm-time').value = d.toTimeString().slice(0, 5);
   }
+  setupNmBookTypeahead('nm-book-input', 'nm-book-dropdown', 'nm-book-id', eligibleBooks);
   el('nm-display').classList.add('hidden');
   el('nm-empty').classList.add('hidden');
   el('nm-edit-btn').classList.add('hidden');
@@ -705,7 +751,7 @@ function showNmForm() {
 
 async function saveNextMeeting() {
   const clubId = currentClubId;
-  const bookId   = el('nm-book-select').value || null;
+  const bookId   = el('nm-book-id').value || null;
   const location = el('nm-location').value.trim() || null;
   const dateVal  = el('nm-date').value;
   const timeVal  = el('nm-time').value || '00:00';
@@ -759,30 +805,35 @@ async function loadAdminManageNm() {
 /* Show the edit form for admin Manage tab */
 async function showAdminNmForm() {
   if (!adminClubId) return;
-  const sel = el('admin-nm-book-select');
-  if (!sel) return;
-  let books = _aState.admin.books.filter(b => !b.archived);
-  if (!books.length) {
+  let allAdminBooks = _aState.admin.books;
+  if (!allAdminBooks.length) {
     try {
       const fetched = await api(`/api/bookclubs/${adminClubId}/books`);
       _aState.admin.books = fetched;
-      books = fetched.filter(b => !b.archived);
-    } catch { books = []; }
+      allAdminBooks = fetched;
+    } catch { allAdminBooks = []; }
   }
-  sel.innerHTML = '<option value="">— No book selected —</option>' +
-    books.map(b => `<option value="${b.id}">${esc(b.title)}${b.author ? ' — ' + esc(b.author) : ''}</option>`).join('');
+  const eligibleBooks = allAdminBooks.filter(b => b.active_for_voting && !b.archived);
   const data = _adminNmData;
-  sel.value = '';
-  el('admin-nm-location').value = '';
-  el('admin-nm-date').value = '';
-  el('admin-nm-time').value = '';
-  if (data?.next_book_id) sel.value = data.next_book_id;
+  el('admin-nm-book-id').value    = '';
+  el('admin-nm-book-input').value = '';
+  el('admin-nm-location').value   = '';
+  el('admin-nm-date').value       = '';
+  el('admin-nm-time').value       = '';
+  if (data?.next_book_id) {
+    const b = allAdminBooks.find(x => x.id === data.next_book_id);
+    if (b) {
+      el('admin-nm-book-id').value    = b.id;
+      el('admin-nm-book-input').value = b.title + (b.author ? ' — ' + b.author : '');
+    }
+  }
   if (data?.next_meeting_location) el('admin-nm-location').value = data.next_meeting_location;
   if (data?.next_meeting_at) {
     const d = new Date(data.next_meeting_at);
     el('admin-nm-date').value = d.toISOString().slice(0, 10);
     el('admin-nm-time').value = d.toTimeString().slice(0, 5);
   }
+  setupNmBookTypeahead('admin-nm-book-input', 'admin-nm-book-dropdown', 'admin-nm-book-id', eligibleBooks);
   el('admin-nm-display').classList.add('hidden');
   el('admin-nm-empty').classList.add('hidden');
   el('admin-nm-edit-btn').classList.add('hidden');
@@ -793,7 +844,7 @@ async function showAdminNmForm() {
 
 async function saveAdminNextMeeting() {
   const clubId   = adminClubId;
-  const bookId   = el('admin-nm-book-select').value || null;
+  const bookId   = el('admin-nm-book-id').value || null;
   const location = el('admin-nm-location').value.trim() || null;
   const dateVal  = el('admin-nm-date').value;
   const timeVal  = el('admin-nm-time').value || '00:00';

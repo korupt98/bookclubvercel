@@ -295,7 +295,11 @@
           <div class="two-col">
             <div class="field">
               <label>Book to Read</label>
-              <select id="nm-book-select"><option value="">— No book selected —</option></select>
+              <div class="autocomplete-wrap">
+                <input type="text" id="nm-book-input" placeholder="Type to search eligible books…" autocomplete="off">
+                <input type="hidden" id="nm-book-id">
+                <div id="nm-book-dropdown" class="dropdown hidden"></div>
+              </div>
             </div>
             <div class="field">
               <label>Location</label>
@@ -562,7 +566,11 @@
           <div class="two-col">
             <div class="field">
               <label>Book to Read</label>
-              <select id="admin-nm-book-select"><option value="">— No book selected —</option></select>
+              <div class="autocomplete-wrap">
+                <input type="text" id="admin-nm-book-input" placeholder="Type to search eligible books…" autocomplete="off">
+                <input type="hidden" id="admin-nm-book-id">
+                <div id="admin-nm-book-dropdown" class="dropdown hidden"></div>
+              </div>
             </div>
             <div class="field">
               <label>Location</label>
