@@ -660,9 +660,16 @@ app.patch('/api/bookclubs/:clubId/books/:id/archive', requireClubAccess, async (
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
-app.delete('/api/bookclubs/:clubId/books/:id', requireClubAdmin, async (req, res) => {
+app.delete('/api/bookclubs/:clubId/books/:id', requireClubAccess, async (req, res) => {
+  const bookId = parseInt(req.params.id);
+  const clubId = parseInt(req.params.clubId);
   try {
-    await db.deleteBook(parseInt(req.params.id));
+    const book = await db.getBook(bookId);
+    if (!book || book.bookclub_id !== clubId) return res.status(404).json({ error: 'Not found' });
+    const clubRole = await db.getClubRole(req.user.id, clubId);
+    if (clubRole !== 'admin' && req.user.role !== 'superadmin' && book.added_by_user_id !== req.user.id)
+      return res.status(403).json({ error: 'You can only delete your own books' });
+    await db.deleteBook(bookId);
     res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });

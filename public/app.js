@@ -1032,11 +1032,6 @@ function renderBooksTable() {
       actions.push(`<button class="btn btn-ghost btn-xs" onclick="memberOpenOwnEdit(${b.id})">Edit</button>`);
     }
     if ((isOwner || canAdmin) && !b.selected) {
-      actions.push(b.archived
-        ? `<button class="btn btn-ghost btn-xs" onclick="memberArchiveBook(${b.id},false)">Unarchive</button>`
-        : `<button class="btn btn-ghost btn-xs" onclick="memberArchiveBook(${b.id},true)">Archive</button>`);
-    }
-    if (canAdmin && !b.selected) {
       actions.push(`<button class="btn btn-danger btn-xs" onclick="memberDeleteBook(${b.id})">Delete</button>`);
     }
 
@@ -2304,11 +2299,7 @@ function renderAdminBooksTable() {
     const votingCb = `<input type="checkbox" class="voting-cb" ${b.active_for_voting ? 'checked' : ''} ${canToggleVoting ? '' : 'disabled'}
       title="${b.archived ? 'Book is archived' : 'Toggle voting eligibility'}"
       onchange="adminToggleVoting(${b.id})">`;
-    const archiveBtn = !b.selected
-      ? (b.archived
-          ? `<button class="btn btn-ghost btn-xs" onclick="adminArchiveBook(${b.id},false)">Unarchive</button>`
-          : `<button class="btn btn-ghost btn-xs" onclick="adminArchiveBook(${b.id},true)">Archive</button>`)
-      : '';
+    const archiveBtn = '';
 
     // ── Desktop table row ──
     tableRows += `<tr class="${b.archived ? 'inactive' : ''}">
