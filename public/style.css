@@ -670,3 +670,7 @@ tr.inactive td.td-voting { opacity:1; }
   #users-table-wrap { display:none; }
   .users-cards { display:flex; }
 }
+
+/* ── Club Picker ─────────────────────────────────────────────────────────── */
+.club-picker-list { display:flex; flex-direction:column; gap:.5rem; margin:1rem 0; }
+.club-pick-btn { text-align:left; padding:.75rem 1rem; font-size:1rem; border-radius:var(--radius); }

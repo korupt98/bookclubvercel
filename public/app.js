@@ -22,6 +22,7 @@ let searchTimer      = null;
 let adminSearchTimer = null;
 let voterPollInterval = null;
 let _memberSetup     = false;
+let _freshLogin      = false;
 let sortField        = 'added_at';
 let sortDir          = 'desc';
 let _expandedClubs   = new Set();
@@ -142,6 +143,7 @@ function initGoogleButton(clientId) {
 }
 
 async function handleGoogleLogin(response) {
+  _freshLogin = true;
   try {
     const data = await api('/api/auth/google', 'POST', { credential: response.credential });
     authToken   = data.token;
@@ -192,13 +194,54 @@ async function fetchMe() {
   await loadGenres();
   if (me.role === 'superadmin' && !sessionStorage.getItem('bc_member_view')) {
     showAdmin();
-  } else {
-    // Superadmin in member view: fetch all clubs (they may not be a member of any)
-    if (me.role === 'superadmin') {
-      allClubs = await api('/api/bookclubs').catch(() => allClubs);
-    }
-    showMember();
+    return;
   }
+  if (me.role === 'superadmin') {
+    allClubs = await api('/api/bookclubs').catch(() => allClubs);
+  }
+  if (!allClubs.length) {
+    showLoginError('You are not a member of any book club. Contact an admin.');
+    authToken = null;
+    localStorage.removeItem('bc_token');
+    showLogin();
+    return;
+  }
+  if (allClubs.length === 1) {
+    currentClubId = allClubs[0].id;
+    localStorage.setItem('bc_club_id', String(currentClubId));
+    showMember();
+    return;
+  }
+  // Multiple clubs: on fresh login always show picker; on page refresh restore saved club
+  if (!_freshLogin) {
+    const savedId    = parseInt(localStorage.getItem('bc_club_id') || '0');
+    const validSaved = savedId && allClubs.find(c => c.id === savedId);
+    if (validSaved) {
+      currentClubId = savedId;
+      showMember();
+      return;
+    }
+  }
+  showClubPicker(allClubs);
+}
+
+function showClubPicker(clubs) {
+  el('public-home').classList.add('hidden');
+  el('login-page').classList.add('hidden');
+  el('quick-login-page').classList.add('hidden');
+  el('member-app').classList.add('hidden');
+  el('admin-app').classList.add('hidden');
+  el('club-picker').classList.remove('hidden');
+  el('club-picker-list').innerHTML = clubs.map(c =>
+    `<button class="btn btn-secondary club-pick-btn" onclick="pickClub(${c.id})">${esc(c.name)}</button>`
+  ).join('');
+}
+
+function pickClub(clubId) {
+  currentClubId = clubId;
+  localStorage.setItem('bc_club_id', String(clubId));
+  el('club-picker').classList.add('hidden');
+  showMember();
 }
 
 el('public-signin-btn').addEventListener('click', showLogin);
@@ -211,6 +254,7 @@ el('quick-back-btn').addEventListener('click', () => {
   el('quick-login-page').classList.add('hidden');
   el('public-home').classList.remove('hidden');
 });
+el('club-picker-logout').addEventListener('click', logout);
 el('login-btn').addEventListener('click', doLogin);
 el('login-password').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
 
@@ -221,6 +265,7 @@ el('quick-member-select').addEventListener('change', () => {
 el('quick-signin-btn').addEventListener('click', doQuickLogin);
 
 async function doLogin() {
+  _freshLogin = true;
   const identifier = el('login-identifier').value.trim();
   const password   = el('login-password').value;
   if (!identifier || !password) return showLoginError('Enter email/username and password');
@@ -236,6 +281,7 @@ async function doLogin() {
 }
 
 async function doQuickLogin() {
+  _freshLogin = true;
   const userId = parseInt(el('quick-member-select').value);
   if (!userId) return;
   try {
@@ -268,17 +314,26 @@ el('admin-logout-btn').addEventListener('click', logout);
 el('switch-to-member-btn').addEventListener('click', async () => {
   sessionStorage.setItem('bc_member_view', '1');
   el('admin-app').classList.add('hidden');
-  // Superadmin needs all clubs in member view
   if (isSuperAdmin() && (!allClubs.length || !allClubs[0].club_role)) {
     allClubs = await api('/api/bookclubs').catch(() => allClubs);
+  }
+  if (!currentClubId && allClubs.length === 1) {
+    currentClubId = allClubs[0].id;
+    localStorage.setItem('bc_club_id', String(currentClubId));
+  }
+  if (!currentClubId && allClubs.length > 1) {
+    _freshLogin = true;
+    showClubPicker(allClubs);
+    return;
   }
   if (!_memberSetup) {
     showMember();
   } else {
     el('member-app').classList.remove('hidden');
+    const switchBtn = el('switch-club-btn');
+    if (switchBtn) switchBtn.classList.toggle('hidden', allClubs.length <= 1);
     el('switch-to-admin-btn').classList.remove('hidden');
     if (currentClubId) await loadMemberClub();
-    else if (allClubs.length) { currentClubId = allClubs[0].id; await loadMemberClub(); }
   }
 });
 
@@ -287,6 +342,7 @@ el('switch-to-admin-btn').addEventListener('click', () => {
   el('member-app').classList.add('hidden');
   el('admin-app').classList.remove('hidden');
 });
+el('switch-club-btn').addEventListener('click', switchClub);
 
 /* ── Role helpers ───────────────────────────────────────────────────────────── */
 function isSuperAdmin() { return currentUser?.role === 'superadmin'; }
@@ -411,6 +467,7 @@ function showMember() {
   el('public-home').classList.add('hidden');
   el('login-page').classList.add('hidden');
   el('quick-login-page').classList.add('hidden');
+  el('club-picker').classList.add('hidden');
   el('admin-app').classList.add('hidden');
   el('member-app').classList.remove('hidden');
   el('member-welcome').textContent = `Welcome, ${currentUser.name}`;
@@ -422,45 +479,29 @@ function showMember() {
   // Show Admin View button only for superadmins
   el('switch-to-admin-btn').classList.toggle('hidden', !isSuperAdmin());
 
+  // Show Switch Club button if user is in multiple clubs
+  const switchBtn = el('switch-club-btn');
+  if (switchBtn) switchBtn.classList.toggle('hidden', allClubs.length <= 1);
+
   if (!_memberSetup) {
     _memberSetup = true;
     setupMemberTabs();
     setupMemberListeners();
   }
-  setupMemberClubSwitcher(); // refresh club list each time (safe: uses onchange)
-  if (allClubs.length) {
-    const savedId   = parseInt(localStorage.getItem('bc_club_id') || '0');
-    const validSaved = savedId && allClubs.find(c => c.id === savedId);
-    currentClubId   = validSaved ? savedId : allClubs[0].id;
-    localStorage.setItem('bc_club_id', String(currentClubId));
-    // Sync switcher dropdown to the restored club
-    const switcher = el('club-switcher');
-    if (switcher && allClubs.length > 1) switcher.value = String(currentClubId);
+  if (currentClubId) {
     loadMemberClub();
     restoreMemberTab() || loadMemberStats();
   }
 }
 
 function setupMemberClubSwitcher() {
-  if (allClubs.length <= 1) return;
-  const wrap = el('club-switcher-wrap');
-  const sel  = el('club-switcher');
-  wrap.classList.remove('hidden');
-  sel.innerHTML = allClubs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-  sel.onchange = () => {
-    const pendingId = parseInt(sel.value);
-    if (pendingId === currentClubId) return;
-    // Immediately revert the dropdown — only commit after confirmation
-    sel.value = String(currentClubId);
-    const oldName = allClubs.find(c => c.id === currentClubId)?.name || 'current club';
-    const newName = allClubs.find(c => c.id === pendingId)?.name    || 'new club';
-    if (confirm(`Switch from "${oldName}" to "${newName}"?`)) {
-      currentClubId = pendingId;
-      localStorage.setItem('bc_club_id', String(pendingId));
-      sel.value = String(pendingId);
-      loadMemberClub();
-    }
-  };
+  // Club switching now happens at login via the club picker
+}
+
+function switchClub() {
+  el('member-app').classList.add('hidden');
+  _freshLogin = true;
+  showClubPicker(allClubs);
 }
 
 function setupMemberTabs() {
@@ -2069,7 +2110,6 @@ function setupAdminListeners() {
   el('cancel-create-club-btn').addEventListener('click', () => el('create-club-form').classList.add('hidden'));
   el('create-club-btn').addEventListener('click', createClub);
   el('create-user-btn').addEventListener('click', createUser);
-  el('add-existing-user-btn').addEventListener('click', addExistingUser);
   el('admin-book-search').addEventListener('input', () => {
     clearTimeout(adminSearchTimer);
     const q = el('admin-book-search').value.trim();
@@ -2156,76 +2196,14 @@ function deleteClub(id) {
 
 /* ── Admin: Members ──────────────────────────────────── */
 async function loadAdminMembers() {
-  if (!adminClubId) return;
-  const club = allClubs.find(c => c.id === adminClubId);
-  el('members-club-label').textContent = club ? `— ${club.name}` : '';
+  // Combined user management — shows all users with their club memberships
   try {
-    [clubMembers, allUsers] = await Promise.all([
-      api(`/api/bookclubs/${adminClubId}/members`),
+    [allUsers, allClubs] = await Promise.all([
       api('/api/users'),
+      api('/api/bookclubs'),
     ]);
-    renderMembersList();
-    populateExistingUsersSelect();
-  } catch(e) { console.error(e); }
-}
-
-function renderMembersList() {
-  const list = el('members-list');
-  if (!clubMembers.length) { list.innerHTML = `<p class="dim">No members yet.</p>`; return; }
-  list.innerHTML = clubMembers.map(u => {
-    const roleBadge = u.club_role === 'admin'
-      ? `<span class="role-badge role-badge-admin">Club Admin</span>`
-      : `<span class="role-badge">Member</span>`;
-    const toggleLabel = u.club_role === 'admin' ? 'Make Member' : 'Make Admin';
-    return `<div class="member-row">
-      <div class="member-info">
-        <strong>${esc(u.name)}</strong>
-        <span>${esc(u.email)}</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-        ${roleBadge}
-        <div class="action-group">
-          <button class="btn btn-ghost btn-xs" onclick="openEditMember(${u.id},${adminClubId},'admin')">Edit</button>
-          ${u.email ? `<button class="btn btn-ghost btn-xs" onclick="resetMemberPassword(${u.id},${adminClubId},'admin',false)">Send Invite</button>` : ''}
-          <button class="btn btn-ghost btn-xs" onclick="resetMemberPassword(${u.id},${adminClubId},'admin',true)">Reset Pwd</button>
-          <button class="btn btn-ghost btn-xs" onclick="adminSetClubRole(${u.id},'${u.club_role === 'admin' ? 'member' : 'admin'}')">${toggleLabel}</button>
-          <button class="btn btn-danger btn-xs" onclick="removeMember(${u.id})">Remove</button>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function adminSetClubRole(userId, role) {
-  if (role === 'admin') {
-    const u = clubMembers.find(m => m.id === userId);
-    confirmAction(
-      'Make Club Admin?',
-      `Give "${u?.name || 'this member'}" club admin access? They will be able to manage members, voting, and settings for this club. Type "yes" to confirm.`,
-      async () => {
-        try {
-          await api(`/api/bookclubs/${adminClubId}/members/${userId}/role`, 'PATCH', { role });
-          await loadAdminMembers();
-        } catch (e) { alert(e.message); }
-      }
-    );
-  } else {
-    (async () => {
-      try {
-        await api(`/api/bookclubs/${adminClubId}/members/${userId}/role`, 'PATCH', { role });
-        await loadAdminMembers();
-      } catch (e) { alert(e.message); }
-    })();
-  }
-}
-
-function populateExistingUsersSelect() {
-  const sel = el('existing-user-select');
-  const memberIds = clubMembers.map(m => m.id);
-  const nonMembers = allUsers.filter(u => !memberIds.includes(u.id));
-  sel.innerHTML = nonMembers.length
-    ? [`<option value="">— select user —</option>`, ...nonMembers.map(u => `<option value="${u.id}">${esc(u.name)} (${esc(u.email)})</option>`)].join('')
-    : `<option value="">All users are already members</option>`;
+    renderAllUsersTable();
+  } catch (e) { console.error(e); }
 }
 
 async function createUser() {
@@ -2240,11 +2218,10 @@ async function createUser() {
       email:    email    || undefined,
       username: username || undefined,
       role,
-      bookclub_ids: [adminClubId],
     });
     el('new-user-name').value = ''; el('new-user-email').value = '';
     el('new-user-username').value = ''; el('new-user-role').value = 'member';
-    showMsg('create-user-msg', 'User created!', 'success');
+    showMsg('create-user-msg', 'User created! Use Edit to assign them to a book club.', 'success');
     if (data.temp_password) {
       el('pwd-modal-email').textContent = email || username;
       el('pwd-modal-value').textContent  = data.temp_password;
@@ -2252,29 +2229,6 @@ async function createUser() {
     }
     await loadAdminMembers();
   } catch (e) { showMsg('create-user-msg', e.message, 'error'); }
-}
-
-async function addExistingUser() {
-  const userId = parseInt(el('existing-user-select').value);
-  if (!userId) return;
-  try {
-    await api(`/api/bookclubs/${adminClubId}/members`, 'POST', { user_id: userId });
-    showMsg('add-existing-msg', 'User added to club!', 'success');
-    await loadAdminMembers();
-  } catch (e) { showMsg('add-existing-msg', e.message, 'error'); }
-}
-
-function removeMember(userId) {
-  confirmAction(
-    'Remove Member',
-    'Remove this member from the club? This cannot be undone.',
-    async () => {
-      try {
-        await api(`/api/bookclubs/${adminClubId}/members/${userId}`, 'DELETE');
-        await loadAdminMembers();
-      } catch (e) { alert(e.message); }
-    }
-  );
 }
 
 async function resetUserPassword(userId) {
@@ -2720,17 +2674,22 @@ function renderAllUsersTable() {
       <button class="btn btn-ghost btn-xs" onclick="resetUserPassword(${u.id})">Reset Pwd</button>
       <button class="btn btn-danger btn-xs" onclick="deleteUser(${u.id})">Delete</button>
     </div>`;
+    const clubsList = (u.clubs || []).map(c => esc(c.name)).join(', ') || '<span class="dim">None</span>';
+    const clubsBadges = (u.clubs || []).length
+      ? (u.clubs || []).map(c => `<span class="role-badge">${esc(c.name)}</span>`).join(' ')
+      : '<span class="dim">None</span>';
     tableRows += `<tr>
       <td><strong>${esc(u.name)}</strong></td>
       <td>${esc(u.email || '—')}</td>
+      <td>${clubsList}</td>
       <td>${globalBadge}</td>
-      <td>${fmtDate(u.created_at)}</td>
       <td>${actionBtns}</td>
     </tr>`;
     cardRows += `<div class="member-row">
       <div class="member-info">
         <strong>${esc(u.name)}</strong>
-        <span>${esc(u.email || '—')} &nbsp;·&nbsp; Joined ${fmtDate(u.created_at)}</span>
+        <span>${esc(u.email || '—')}</span>
+        <span class="dim" style="font-size:.8rem">${clubsBadges}</span>
       </div>
       <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
         ${globalBadge}
@@ -2748,6 +2707,13 @@ function openEditUser(userId) {
   el('edit-user-id').value    = userId;
   el('edit-user-name').value  = u.name  || '';
   el('edit-user-email').value = u.email || '';
+  // Build club checkboxes
+  const userClubIds = new Set((u.clubs || []).map(c => c.id));
+  el('edit-user-clubs').innerHTML = allClubs.map(c =>
+    `<label class="genre-cb-item">
+      <input type="checkbox" value="${c.id}"${userClubIds.has(c.id) ? ' checked' : ''}> ${esc(c.name)}
+    </label>`
+  ).join('');
   el('edit-user-msg').classList.add('hidden');
   openModal('edit-user-modal');
 }
@@ -2756,12 +2722,15 @@ async function saveEditUser() {
   const userId = parseInt(el('edit-user-id').value);
   const name   = el('edit-user-name').value.trim();
   const email  = el('edit-user-email').value.trim() || null;
+  const clubIds = [...el('edit-user-clubs').querySelectorAll('input[type="checkbox"]:checked')]
+    .map(cb => parseInt(cb.value));
   if (!name) return showMsg('edit-user-msg', 'Name is required', 'error');
   try {
-    const updated = await api(`/api/users/${userId}`, 'PATCH', { name, email });
-    const idx = allUsers.findIndex(x => x.id === userId);
-    if (idx !== -1) allUsers[idx] = { ...allUsers[idx], ...updated };
-    renderAllUsersTable();
+    await Promise.all([
+      api(`/api/users/${userId}`, 'PATCH', { name, email }),
+      api(`/api/users/${userId}/clubs`, 'PUT', { club_ids: clubIds }),
+    ]);
+    await loadAdminMembers();
     closeModal('edit-user-modal');
   } catch (e) { showMsg('edit-user-msg', e.message, 'error'); }
 }

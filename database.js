@@ -672,6 +672,7 @@ async function deleteGenre(id) {
 
 /* ── Exports ────────────────────────────────────────────────────────────────── */
 module.exports = {
+  pool,
   init,
   // sessions
   getSession, createSession, deleteSession,

@@ -65,15 +65,23 @@
   </div>
 </div>
 
+<!-- ══ CLUB PICKER ════════════════════════════════════════════════════════════ -->
+<div id="club-picker" class="hidden">
+  <div class="login-card">
+    <h1>Book Club</h1>
+    <p class="dim">Which club are you joining today?</p>
+    <div id="club-picker-list" class="club-picker-list"></div>
+    <button id="club-picker-logout" class="btn btn-ghost btn-full mt-sm">← Sign Out</button>
+  </div>
+</div>
+
 <!-- ══ MEMBER APP ══════════════════════════════════════════════════════════════ -->
 <div id="member-app" class="hidden">
   <header>
     <div class="header-inner">
       <div class="header-left">
         <h1 id="member-club-name">Book Club</h1>
-        <div id="club-switcher-wrap" class="club-switcher hidden">
-          <select id="club-switcher"></select>
-        </div>
+        <button id="switch-club-btn" class="btn btn-ghost btn-sm hidden">Switch Club</button>
       </div>
       <div class="header-right">
         <span id="member-welcome" class="dim"></span>
@@ -596,25 +604,6 @@
         </div>
       </div>
 
-      <!-- Members Management -->
-      <div class="card admin-card mb-lg">
-        <div class="section-head" style="margin-bottom:1rem">
-          <h3 style="margin:0">Members <span id="members-club-label" class="dim"></span></h3>
-        </div>
-        <div id="members-list" class="members-list mb-lg"></div>
-        <div class="admin-members-forms">
-          <div class="card form-card">
-            <h3>Add Existing User</h3>
-            <div class="field">
-              <label>User</label>
-              <select id="existing-user-select"><option value="">— select user —</option></select>
-            </div>
-            <button id="add-existing-user-btn" class="btn btn-secondary">Add to Club</button>
-            <p id="add-existing-msg" class="msg hidden"></p>
-          </div>
-        </div>
-      </div>
-
       <!-- Book Clubs Management -->
       <div class="section-head" style="margin-bottom:1rem">
         <h2 style="margin:0">Book Clubs</h2>
@@ -659,7 +648,7 @@
       <div id="users-table-wrap" class="table-scroll">
         <table>
           <thead><tr>
-            <th>Name</th><th>Email</th><th>Global Role</th><th>Created</th><th>Actions</th>
+            <th>Name</th><th>Email</th><th>Clubs</th><th>Global Role</th><th>Actions</th>
           </tr></thead>
           <tbody id="users-tbody"></tbody>
         </table>
@@ -855,6 +844,10 @@
       <input type="text" id="edit-user-name" placeholder="Full name"></div>
     <div class="field"><label>Email</label>
       <input type="email" id="edit-user-email" placeholder="Leave blank for Google-only users"></div>
+    <div class="field">
+      <label>Book Clubs <span class="hint">(user can only log in if in at least one)</span></label>
+      <div id="edit-user-clubs" class="genre-cb-wrap"></div>
+    </div>
     <div class="row gap-sm mt-sm">
       <button class="btn btn-primary" onclick="saveEditUser()">Save</button>
       <button class="btn btn-secondary" onclick="closeModal('edit-user-modal')">Cancel</button>

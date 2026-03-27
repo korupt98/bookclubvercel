@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const path    = require('path');
 const db      = require('./database');
+const pool    = db.pool;
 const { hashPassword, verifyPassword, generateToken, generateTempPassword, verifyGoogleToken } = require('./auth');
 const { sendInviteEmail } = require('./email');
 const multer = require('multer');
@@ -97,8 +98,13 @@ app.get('/api/public/clubs', async (req, res) => {
 
 app.get('/api/public/users', async (req, res) => {
   try {
-    const users = await db.getAllUsers();
-    res.json(users.filter(u => u.role !== 'clubadmin' && u.role !== 'superadmin').map(u => ({ id: u.id, name: u.name })));
+    const { rows } = await pool.query(
+      `SELECT DISTINCT u.id, u.name FROM users u
+       JOIN bookclub_members bm ON u.id = bm.user_id
+       WHERE u.role != 'superadmin'
+       ORDER BY u.name`
+    );
+    res.json(rows);
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
@@ -344,7 +350,18 @@ app.post('/api/bookclubs/:clubId/members/:uid/reset-password', requireClubAdmin,
 // ── Users ─────────────────────────────────────────────────────────────────────
 app.get('/api/users', requireSuperAdmin, async (req, res) => {
   try {
-    res.json((await db.getAllUsers()).map(({ password_hash, ...u }) => u));
+    const [users, allClubsList, { rows: memRows }] = await Promise.all([
+      db.getAllUsers(),
+      db.getAllBookclubs(),
+      pool.query('SELECT user_id, bookclub_id, club_role FROM bookclub_members'),
+    ]);
+    const memMap = {};
+    for (const m of memRows) {
+      if (!memMap[m.user_id]) memMap[m.user_id] = [];
+      const club = allClubsList.find(c => c.id === m.bookclub_id);
+      if (club) memMap[m.user_id].push({ id: club.id, name: club.name, club_role: m.club_role });
+    }
+    res.json(users.map(({ password_hash, ...u }) => ({ ...u, clubs: memMap[u.id] || [] })));
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
@@ -427,6 +444,24 @@ app.patch('/api/users/:id/role', requireSuperAdmin, async (req, res) => {
     if (!u) return res.status(404).json({ error: 'Not found' });
     const { password_hash, ...safe } = u;
     res.json(safe);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
+app.put('/api/users/:id/clubs', requireSuperAdmin, async (req, res) => {
+  const uid = parseInt(req.params.id);
+  const { club_ids } = req.body;
+  if (!Array.isArray(club_ids)) return res.status(400).json({ error: 'club_ids must be an array' });
+  try {
+    const currentMemberships = await db.getUserBookclubs(uid);
+    const currentIds = currentMemberships.map(c => c.id);
+    const desiredIds = club_ids.map(Number);
+    for (const id of currentIds) {
+      if (!desiredIds.includes(id)) await db.removeUserFromBookclub(uid, id);
+    }
+    for (const id of desiredIds) {
+      if (!currentIds.includes(id)) await db.addUserToBookclub(uid, id, 'member');
+    }
+    res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
