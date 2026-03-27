@@ -563,6 +563,8 @@ async function loadMemberClub() {
   } finally { el('books-loading').classList.add('hidden'); }
   await refreshVoteTab();
   await loadNextMeeting(currentClubId);
+  const activeTab = document.querySelector('[data-tab].active');
+  if (activeTab?.dataset.tab === 'manage') await loadManageTab();
 }
 
 /* ── Next Meeting ────────────────────────────────────────────────────────────── */
@@ -1986,7 +1988,13 @@ function populateAdminClubSelect() {
   sel.innerHTML = allClubs.length
     ? allClubs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')
     : `<option value="">No clubs yet</option>`;
-  if (allClubs.length) adminClubId = allClubs[0].id;
+  if (allClubs.length) {
+    const savedId    = parseInt(localStorage.getItem('bc_admin_club_id') || '0');
+    const validSaved = savedId && allClubs.find(c => c.id === savedId);
+    adminClubId = validSaved ? savedId : allClubs[0].id;
+    sel.value = String(adminClubId);
+    localStorage.setItem('bc_admin_club_id', String(adminClubId));
+  }
   sel.onchange = () => {
     const pendingId = parseInt(sel.value);
     if (pendingId === adminClubId) return;
@@ -1997,6 +2005,7 @@ function populateAdminClubSelect() {
     if (confirm(`Switch from "${oldName}" to "${newName}"?`)) {
       adminClubId = pendingId;
       sel.value = String(pendingId);
+      localStorage.setItem('bc_admin_club_id', String(adminClubId));
       const active = document.querySelector('[data-admin-tab].active');
       if (active) active.click();
     }
@@ -2655,6 +2664,7 @@ function renderAllUsersTable() {
     const toggleLabel = u.role === 'superadmin' ? 'Make Regular User' : 'Make Superadmin';
     const toggleRole  = u.role === 'superadmin' ? 'member' : 'superadmin';
     const actionBtns = `<div class="action-group">
+      <button class="btn btn-ghost btn-xs" onclick="openEditUser(${u.id})">Edit</button>
       <button class="btn btn-ghost btn-xs" onclick="setUserRole(${u.id},'${toggleRole}')">${toggleLabel}</button>
       <button class="btn btn-ghost btn-xs" onclick="resetUserPassword(${u.id})">Reset Pwd</button>
       <button class="btn btn-danger btn-xs" onclick="deleteUser(${u.id})">Delete</button>
@@ -2679,6 +2689,30 @@ function renderAllUsersTable() {
   });
   tbody.innerHTML = tableRows;
   if (cards) cards.innerHTML = cardRows;
+}
+
+function openEditUser(userId) {
+  const u = allUsers.find(x => x.id === userId);
+  if (!u) return;
+  el('edit-user-id').value    = userId;
+  el('edit-user-name').value  = u.name  || '';
+  el('edit-user-email').value = u.email || '';
+  el('edit-user-msg').classList.add('hidden');
+  openModal('edit-user-modal');
+}
+
+async function saveEditUser() {
+  const userId = parseInt(el('edit-user-id').value);
+  const name   = el('edit-user-name').value.trim();
+  const email  = el('edit-user-email').value.trim() || null;
+  if (!name) return showMsg('edit-user-msg', 'Name is required', 'error');
+  try {
+    const updated = await api(`/api/users/${userId}`, 'PATCH', { name, email });
+    const idx = allUsers.findIndex(x => x.id === userId);
+    if (idx !== -1) allUsers[idx] = { ...allUsers[idx], ...updated };
+    renderAllUsersTable();
+    closeModal('edit-user-modal');
+  } catch (e) { showMsg('edit-user-msg', e.message, 'error'); }
 }
 
 function confirmSuperadminRole(select) {

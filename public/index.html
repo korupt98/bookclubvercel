@@ -838,6 +838,23 @@
   </div>
 </div>
 
+<!-- Edit User Modal (superadmin global user edit) -->
+<div id="edit-user-modal" class="modal">
+  <div class="modal-box">
+    <h2>Edit User</h2>
+    <input type="hidden" id="edit-user-id">
+    <div class="field"><label>Name <span class="req">*</span></label>
+      <input type="text" id="edit-user-name" placeholder="Full name"></div>
+    <div class="field"><label>Email</label>
+      <input type="email" id="edit-user-email" placeholder="Leave blank for Google-only users"></div>
+    <div class="row gap-sm mt-sm">
+      <button class="btn btn-primary" onclick="saveEditUser()">Save</button>
+      <button class="btn btn-secondary" onclick="closeModal('edit-user-modal')">Cancel</button>
+    </div>
+    <p id="edit-user-msg" class="msg hidden"></p>
+  </div>
+</div>
+
 <!-- Confirm Action Modal (requires typing "yes") -->
 <div id="confirm-modal" class="modal">
   <div class="modal-box">
