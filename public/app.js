@@ -192,10 +192,7 @@ async function fetchMe() {
   currentUser = me;
   allClubs = me.bookclubs || [];
   await loadGenres();
-  if (me.role === 'superadmin' && !sessionStorage.getItem('bc_member_view')) {
-    showAdmin();
-    return;
-  }
+  // Superadmins have access to all clubs
   if (me.role === 'superadmin') {
     allClubs = await api('/api/bookclubs').catch(() => allClubs);
   }
@@ -208,8 +205,10 @@ async function fetchMe() {
   }
   if (allClubs.length === 1) {
     currentClubId = allClubs[0].id;
-    localStorage.setItem('bc_club_id', String(currentClubId));
-    showMember();
+    adminClubId   = allClubs[0].id;
+    localStorage.setItem('bc_club_id',       String(currentClubId));
+    localStorage.setItem('bc_admin_club_id', String(adminClubId));
+    routeAfterClubPick();
     return;
   }
   // Multiple clubs: on fresh login always show picker; on page refresh restore saved club
@@ -218,11 +217,20 @@ async function fetchMe() {
     const validSaved = savedId && allClubs.find(c => c.id === savedId);
     if (validSaved) {
       currentClubId = savedId;
-      showMember();
+      adminClubId   = savedId;
+      routeAfterClubPick();
       return;
     }
   }
   showClubPicker(allClubs);
+}
+
+function routeAfterClubPick() {
+  if (isSuperAdmin() && !sessionStorage.getItem('bc_member_view')) {
+    showAdmin();
+  } else {
+    showMember();
+  }
 }
 
 function showClubPicker(clubs) {
@@ -239,9 +247,11 @@ function showClubPicker(clubs) {
 
 function pickClub(clubId) {
   currentClubId = clubId;
-  localStorage.setItem('bc_club_id', String(clubId));
+  adminClubId   = clubId;
+  localStorage.setItem('bc_club_id',       String(clubId));
+  localStorage.setItem('bc_admin_club_id', String(clubId));
   el('club-picker').classList.add('hidden');
-  showMember();
+  routeAfterClubPick();
 }
 
 el('public-signin-btn').addEventListener('click', showLogin);
@@ -500,6 +510,7 @@ function setupMemberClubSwitcher() {
 
 function switchClub() {
   el('member-app').classList.add('hidden');
+  el('admin-app').classList.add('hidden');
   _freshLogin = true;
   showClubPicker(allClubs);
 }
@@ -2050,8 +2061,11 @@ async function showAdmin() {
   el('public-home').classList.add('hidden');
   el('login-page').classList.add('hidden');
   el('quick-login-page').classList.add('hidden');
+  el('club-picker').classList.add('hidden');
   el('member-app').classList.add('hidden');
   el('admin-app').classList.remove('hidden');
+  const club = allClubs.find(c => c.id === adminClubId);
+  if (el('admin-club-name')) el('admin-club-name').textContent = club ? club.name : '';
   setupAdminTabs();
   setupAdminListeners();
   await loadAdminClubs();
@@ -2076,35 +2090,13 @@ function setupAdminTabs() {
 }
 
 function populateAdminClubSelect() {
-  const sel = el('admin-club-select');
-  sel.innerHTML = allClubs.length
-    ? allClubs.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')
-    : `<option value="">No clubs yet</option>`;
-  if (allClubs.length) {
-    const savedId    = parseInt(localStorage.getItem('bc_admin_club_id') || '0');
-    const validSaved = savedId && allClubs.find(c => c.id === savedId);
-    adminClubId = validSaved ? savedId : allClubs[0].id;
-    sel.value = String(adminClubId);
-    localStorage.setItem('bc_admin_club_id', String(adminClubId));
-  }
-  sel.onchange = () => {
-    const pendingId = parseInt(sel.value);
-    if (pendingId === adminClubId) return;
-    // Revert immediately — only commit after confirmation
-    sel.value = String(adminClubId);
-    const oldName = allClubs.find(c => c.id === adminClubId)?.name || 'current club';
-    const newName = allClubs.find(c => c.id === pendingId)?.name   || 'new club';
-    if (confirm(`Switch from "${oldName}" to "${newName}"?`)) {
-      adminClubId = pendingId;
-      sel.value = String(pendingId);
-      localStorage.setItem('bc_admin_club_id', String(adminClubId));
-      const active = document.querySelector('[data-admin-tab].active');
-      if (active) active.click();
-    }
-  };
+  // Club is selected via the club picker at login; just display the current club name
+  const club = allClubs.find(c => c.id === adminClubId);
+  if (el('admin-club-name')) el('admin-club-name').textContent = club ? club.name : '';
 }
 
 function setupAdminListeners() {
+  el('admin-switch-club-btn').addEventListener('click', switchClub);
   buildGenreCheckboxes('admin-book-genre-select', '');
   el('show-create-club-btn').addEventListener('click', () => el('create-club-form').classList.toggle('hidden'));
   el('cancel-create-club-btn').addEventListener('click', () => el('create-club-form').classList.add('hidden'));
