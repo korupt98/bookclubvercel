@@ -615,6 +615,7 @@ async function loadMemberClub() {
   } finally { el('books-loading').classList.add('hidden'); }
   await refreshVoteTab();
   await loadNextMeeting(currentClubId);
+  await loadAnnouncements(currentClubId);
   const activeTab = document.querySelector('[data-tab].active');
   if (activeTab?.dataset.tab === 'manage') await loadManageTab();
 }
@@ -673,6 +674,93 @@ function renderNextMeetingBanner(data, targetId = 'next-meeting-banner') {
       </div>
     </div>`;
   banner.classList.remove('hidden');
+}
+
+/* ── Announcements ────────────────────────────────────────────────────────────── */
+async function loadAnnouncements(clubId) {
+  try {
+    const anns = await api(`/api/bookclubs/${clubId}/announcements`);
+    renderAnnouncements(anns);
+  } catch { renderAnnouncements([]); }
+}
+
+function renderAnnouncements(anns) {
+  const section = el('announcements-section');
+  if (!section) return;
+  if (!anns || anns.length === 0) {
+    section.classList.add('hidden');
+    section.innerHTML = '';
+    return;
+  }
+  section.innerHTML = `
+    <div class="announcements-banner">
+      <div class="ann-header">&#128226; Announcements</div>
+      ${anns.map(a => `
+        <div class="ann-item">
+          <div class="ann-content">${esc(a.content)}</div>
+          <div class="ann-meta">${a.author_name ? `${esc(a.author_name)} &middot; ` : ''}${annRelDate(a.created_at)}</div>
+        </div>
+      `).join('')}
+    </div>`;
+  section.classList.remove('hidden');
+}
+
+async function loadManageAnnouncements(clubId) {
+  try {
+    const anns = await api(`/api/bookclubs/${clubId}/announcements`);
+    renderManageAnnouncements(anns, clubId);
+  } catch { /* silent */ }
+}
+
+function renderManageAnnouncements(anns, clubId) {
+  const list = el('ann-list');
+  if (!list) return;
+  if (!anns || anns.length === 0) {
+    list.innerHTML = '<p class="dim" style="font-size:.88rem;margin-top:.5rem">No announcements yet.</p>';
+    return;
+  }
+  list.innerHTML = `<div class="ann-manage-list">${anns.map(a => `
+    <div class="ann-manage-item">
+      <div class="ann-manage-body">
+        <div class="ann-manage-text">${esc(a.content)}</div>
+        <div class="ann-meta">${a.author_name ? `${esc(a.author_name)} &middot; ` : ''}${annRelDate(a.created_at)}</div>
+      </div>
+      <button class="btn btn-danger btn-xs" onclick="deleteAnnouncement(${a.id},${clubId})">Delete</button>
+    </div>
+  `).join('')}</div>`;
+}
+
+async function addAnnouncement() {
+  const content = (el('ann-content')?.value || '').trim();
+  if (!content) return showMsg('ann-msg', 'Please enter announcement text.', 'error');
+  try {
+    await api(`/api/bookclubs/${currentClubId}/announcements`, 'POST', { content });
+    el('ann-content').value = '';
+    showMsg('ann-msg', 'Announcement posted!', 'success');
+    await loadManageAnnouncements(currentClubId);
+    await loadAnnouncements(currentClubId);
+  } catch (e) {
+    showMsg('ann-msg', e.message || 'Failed to post.', 'error');
+  }
+}
+
+async function deleteAnnouncement(id, clubId) {
+  if (!confirm('Delete this announcement?')) return;
+  try {
+    await api(`/api/bookclubs/${clubId}/announcements/${id}`, 'DELETE');
+    await loadManageAnnouncements(clubId);
+    await loadAnnouncements(clubId);
+  } catch (e) { alert(e.message || 'Failed to delete.'); }
+}
+
+function annRelDate(iso) {
+  if (!iso) return '';
+  const d    = new Date(iso);
+  const days = Math.floor((Date.now() - d) / 86400000);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7)  return `${days} days ago`;
+  return d.toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
 }
 
 /* Render meeting display card (shared by member and admin manage tabs) */
@@ -1573,6 +1661,7 @@ async function loadManageTab() {
     populateManageExistingUsers(allUsersRes);
   } catch {}
   await loadManageNextMeeting(currentClubId);
+  await loadManageAnnouncements(currentClubId);
   await loadManageVoting();
 }
 

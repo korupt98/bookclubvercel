@@ -234,6 +234,7 @@
     <!-- Stats (all logged-in members) -->
     <section id="tab-stats" class="tab-pane active">
       <div id="next-meeting-banner" class="next-meeting-banner hidden"></div>
+      <div id="announcements-section" class="hidden"></div>
       <div class="section-head">
         <h2>Stats <span id="stats-club-label" class="dim"></span></h2>
       </div>
@@ -331,6 +332,21 @@
           </div>
           <p id="nm-msg" class="msg hidden"></p>
         </div>
+      </div>
+
+      <div class="card admin-card mt-lg" id="manage-announcements-card">
+        <div class="section-head" style="margin-bottom:.75rem">
+          <h3 style="margin:0">Announcements</h3>
+        </div>
+        <div class="field">
+          <label>New Announcement</label>
+          <textarea id="ann-content" rows="3" placeholder="Write an announcement visible to all club members…" style="width:100%;resize:vertical"></textarea>
+        </div>
+        <div class="row gap-sm mt-sm">
+          <button class="btn btn-primary btn-sm" onclick="addAnnouncement()">Post Announcement</button>
+        </div>
+        <p id="ann-msg" class="msg hidden"></p>
+        <div id="ann-list" class="mt-sm"></div>
       </div>
 
       <div class="card admin-card mt-lg">

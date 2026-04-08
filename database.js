@@ -646,6 +646,44 @@ async function setNextMeeting(clubId, bookId, meetingAt, location) {
   return rows[0] || null;
 }
 
+/* ── Announcements ──────────────────────────────────────────────────────────── */
+async function getAnnouncements(clubId) {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS announcements (
+      id          SERIAL PRIMARY KEY,
+      bookclub_id INT  NOT NULL REFERENCES bookclubs(id) ON DELETE CASCADE,
+      content     TEXT NOT NULL,
+      created_by  INT  REFERENCES users(id) ON DELETE SET NULL,
+      created_at  TIMESTAMPTZ DEFAULT NOW()
+    )
+  `).catch(() => {});
+  const { rows } = await pool.query(
+    `SELECT a.id, a.content, a.created_at, u.name AS author_name
+     FROM announcements a
+     LEFT JOIN users u ON u.id = a.created_by
+     WHERE a.bookclub_id = $1
+     ORDER BY a.created_at DESC`,
+    [clubId]
+  );
+  return rows;
+}
+
+async function createAnnouncement(clubId, content, userId) {
+  const { rows } = await pool.query(
+    `INSERT INTO announcements (bookclub_id, content, created_by)
+     VALUES ($1, $2, $3) RETURNING *`,
+    [clubId, content, userId]
+  );
+  return rows[0];
+}
+
+async function deleteAnnouncement(id, clubId) {
+  await pool.query(
+    'DELETE FROM announcements WHERE id = $1 AND bookclub_id = $2',
+    [id, clubId]
+  );
+}
+
 /* ── Genres ─────────────────────────────────────────────────────────────────── */
 async function getGenres() {
   const { rows } = await pool.query('SELECT * FROM genres ORDER BY name');
@@ -694,6 +732,8 @@ module.exports = {
   getAnalytics,
   // next meeting
   getNextMeeting, setNextMeeting,
+  // announcements
+  getAnnouncements, createAnnouncement, deleteAnnouncement,
   // genres
   getGenres, addGenre, updateGenre, deleteGenre,
 };

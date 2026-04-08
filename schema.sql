@@ -136,3 +136,13 @@ CREATE INDEX IF NOT EXISTS idx_vote_entries_vote      ON vote_entries(vote_id);
 -- Username for login (email OR username)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT UNIQUE;
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+
+-- Announcements (admins post, all club members see)
+CREATE TABLE IF NOT EXISTS announcements (
+  id          SERIAL PRIMARY KEY,
+  bookclub_id INT  NOT NULL REFERENCES bookclubs(id) ON DELETE CASCADE,
+  content     TEXT NOT NULL,
+  created_by  INT  REFERENCES users(id) ON DELETE SET NULL,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_announcements_club ON announcements(bookclub_id);

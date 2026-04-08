@@ -862,6 +862,29 @@ app.patch('/api/bookclubs/:clubId/next-meeting', requireClubAdmin, async (req, r
   } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
 });
 
+// ── Announcements ─────────────────────────────────────────────────────────────
+app.get('/api/bookclubs/:clubId/announcements', requireClubAccess, async (req, res) => {
+  try {
+    res.json(await db.getAnnouncements(parseInt(req.params.clubId)));
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
+app.post('/api/bookclubs/:clubId/announcements', requireClubAdmin, async (req, res) => {
+  const { content } = req.body;
+  if (!content?.trim()) return res.status(400).json({ error: 'Content required' });
+  try {
+    const ann = await db.createAnnouncement(parseInt(req.params.clubId), content.trim(), req.user.id);
+    res.json(ann);
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
+app.delete('/api/bookclubs/:clubId/announcements/:id', requireClubAdmin, async (req, res) => {
+  try {
+    await db.deleteAnnouncement(parseInt(req.params.id), parseInt(req.params.clubId));
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ error: 'Server error' }); }
+});
+
 // ── Analytics ─────────────────────────────────────────────────────────────────
 app.get('/api/bookclubs/:clubId/analytics', requireClubAccess, async (req, res) => {
   try {
