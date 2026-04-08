@@ -598,6 +598,15 @@ tr.inactive td.td-voting { opacity:1; }
   white-space: pre-wrap;
   word-break: break-word;
 }
+.ann-edit-textarea {
+  font-size: .9rem;
+  line-height: 1.45;
+  padding: .4rem .6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+}
 
 /* ── Responsive ──────────────────────────────────────── */
 @media (max-width:768px) {

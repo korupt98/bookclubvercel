@@ -721,12 +721,22 @@ function renderManageAnnouncements(anns, clubId, listId = 'ann-list') {
   }
   const sectionId = listId === 'admin-ann-list' ? 'admin-announcements-section' : 'announcements-section';
   list.innerHTML = `<div class="ann-manage-list">${anns.map(a => `
-    <div class="ann-manage-item">
+    <div class="ann-manage-item" id="ann-item-${a.id}">
       <div class="ann-manage-body">
-        <div class="ann-manage-text">${esc(a.content)}</div>
+        <div class="ann-manage-text" id="ann-text-${a.id}">${esc(a.content)}</div>
         <div class="ann-meta">${a.author_name ? `${esc(a.author_name)} &middot; ` : ''}${annRelDate(a.created_at)}</div>
+        <div id="ann-edit-form-${a.id}" class="hidden" style="margin-top:.5rem">
+          <textarea class="ann-edit-textarea" id="ann-edit-input-${a.id}" rows="3" style="width:100%;resize:vertical">${esc(a.content)}</textarea>
+          <div class="row gap-sm" style="margin-top:.4rem">
+            <button class="btn btn-primary btn-xs" onclick="saveAnnouncement(${a.id},${clubId},'${listId}','${sectionId}')">Save</button>
+            <button class="btn btn-secondary btn-xs" onclick="cancelEditAnnouncement(${a.id})">Cancel</button>
+          </div>
+        </div>
       </div>
-      <button class="btn btn-danger btn-xs" onclick="deleteAnnouncement(${a.id},${clubId},'${listId}','${sectionId}')">Delete</button>
+      <div class="row gap-sm" id="ann-actions-${a.id}">
+        <button class="btn btn-ghost btn-xs" onclick="startEditAnnouncement(${a.id})">Edit</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteAnnouncement(${a.id},${clubId},'${listId}','${sectionId}')">Delete</button>
+      </div>
     </div>
   `).join('')}</div>`;
 }
@@ -766,6 +776,29 @@ async function deleteAnnouncement(id, clubId, listId = 'ann-list', sectionId = '
     await loadManageAnnouncements(clubId, listId);
     await loadAnnouncements(clubId, sectionId);
   } catch (e) { alert(e.message || 'Failed to delete.'); }
+}
+
+function startEditAnnouncement(id) {
+  el(`ann-text-${id}`)?.classList.add('hidden');
+  el(`ann-edit-form-${id}`)?.classList.remove('hidden');
+  el(`ann-actions-${id}`)?.classList.add('hidden');
+  el(`ann-edit-input-${id}`)?.focus();
+}
+
+function cancelEditAnnouncement(id) {
+  el(`ann-edit-form-${id}`)?.classList.add('hidden');
+  el(`ann-text-${id}`)?.classList.remove('hidden');
+  el(`ann-actions-${id}`)?.classList.remove('hidden');
+}
+
+async function saveAnnouncement(id, clubId, listId = 'ann-list', sectionId = 'announcements-section') {
+  const content = (el(`ann-edit-input-${id}`)?.value || '').trim();
+  if (!content) return;
+  try {
+    await api(`/api/bookclubs/${clubId}/announcements/${id}`, 'PATCH', { content });
+    await loadManageAnnouncements(clubId, listId);
+    await loadAnnouncements(clubId, sectionId);
+  } catch (e) { alert(e.message || 'Failed to save.'); }
 }
 
 function annRelDate(iso) {

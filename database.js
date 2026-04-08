@@ -677,6 +677,14 @@ async function createAnnouncement(clubId, content, userId) {
   return rows[0];
 }
 
+async function updateAnnouncement(id, clubId, content) {
+  const { rows } = await pool.query(
+    'UPDATE announcements SET content = $1 WHERE id = $2 AND bookclub_id = $3 RETURNING *',
+    [content, id, clubId]
+  );
+  return rows[0] || null;
+}
+
 async function deleteAnnouncement(id, clubId) {
   await pool.query(
     'DELETE FROM announcements WHERE id = $1 AND bookclub_id = $2',
@@ -733,7 +741,7 @@ module.exports = {
   // next meeting
   getNextMeeting, setNextMeeting,
   // announcements
-  getAnnouncements, createAnnouncement, deleteAnnouncement,
+  getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement,
   // genres
   getGenres, addGenre, updateGenre, deleteGenre,
 };
