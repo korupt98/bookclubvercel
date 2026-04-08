@@ -677,15 +677,15 @@ function renderNextMeetingBanner(data, targetId = 'next-meeting-banner') {
 }
 
 /* ── Announcements ────────────────────────────────────────────────────────────── */
-async function loadAnnouncements(clubId) {
+async function loadAnnouncements(clubId, targetId = 'announcements-section') {
   try {
     const anns = await api(`/api/bookclubs/${clubId}/announcements`);
-    renderAnnouncements(anns);
-  } catch { renderAnnouncements([]); }
+    renderAnnouncements(anns, targetId);
+  } catch { renderAnnouncements([], targetId); }
 }
 
-function renderAnnouncements(anns) {
-  const section = el('announcements-section');
+function renderAnnouncements(anns, targetId = 'announcements-section') {
+  const section = el(targetId);
   if (!section) return;
   if (!anns || anns.length === 0) {
     section.classList.add('hidden');
@@ -705,29 +705,44 @@ function renderAnnouncements(anns) {
   section.classList.remove('hidden');
 }
 
-async function loadManageAnnouncements(clubId) {
+async function loadManageAnnouncements(clubId, listId = 'ann-list') {
   try {
     const anns = await api(`/api/bookclubs/${clubId}/announcements`);
-    renderManageAnnouncements(anns, clubId);
+    renderManageAnnouncements(anns, clubId, listId);
   } catch { /* silent */ }
 }
 
-function renderManageAnnouncements(anns, clubId) {
-  const list = el('ann-list');
+function renderManageAnnouncements(anns, clubId, listId = 'ann-list') {
+  const list = el(listId);
   if (!list) return;
   if (!anns || anns.length === 0) {
     list.innerHTML = '<p class="dim" style="font-size:.88rem;margin-top:.5rem">No announcements yet.</p>';
     return;
   }
+  const sectionId = listId === 'admin-ann-list' ? 'admin-announcements-section' : 'announcements-section';
   list.innerHTML = `<div class="ann-manage-list">${anns.map(a => `
     <div class="ann-manage-item">
       <div class="ann-manage-body">
         <div class="ann-manage-text">${esc(a.content)}</div>
         <div class="ann-meta">${a.author_name ? `${esc(a.author_name)} &middot; ` : ''}${annRelDate(a.created_at)}</div>
       </div>
-      <button class="btn btn-danger btn-xs" onclick="deleteAnnouncement(${a.id},${clubId})">Delete</button>
+      <button class="btn btn-danger btn-xs" onclick="deleteAnnouncement(${a.id},${clubId},'${listId}','${sectionId}')">Delete</button>
     </div>
   `).join('')}</div>`;
+}
+
+async function adminAddAnnouncement() {
+  const content = (el('admin-ann-content')?.value || '').trim();
+  if (!content) return showMsg('admin-ann-msg', 'Please enter announcement text.', 'error');
+  try {
+    await api(`/api/bookclubs/${adminClubId}/announcements`, 'POST', { content });
+    el('admin-ann-content').value = '';
+    showMsg('admin-ann-msg', 'Announcement posted!', 'success');
+    await loadManageAnnouncements(adminClubId, 'admin-ann-list');
+    await loadAnnouncements(adminClubId, 'admin-announcements-section');
+  } catch (e) {
+    showMsg('admin-ann-msg', e.message || 'Failed to post.', 'error');
+  }
 }
 
 async function addAnnouncement() {
@@ -744,12 +759,12 @@ async function addAnnouncement() {
   }
 }
 
-async function deleteAnnouncement(id, clubId) {
+async function deleteAnnouncement(id, clubId, listId = 'ann-list', sectionId = 'announcements-section') {
   if (!confirm('Delete this announcement?')) return;
   try {
     await api(`/api/bookclubs/${clubId}/announcements/${id}`, 'DELETE');
-    await loadManageAnnouncements(clubId);
-    await loadAnnouncements(clubId);
+    await loadManageAnnouncements(clubId, listId);
+    await loadAnnouncements(clubId, sectionId);
   } catch (e) { alert(e.message || 'Failed to delete.'); }
 }
 
@@ -2168,7 +2183,7 @@ function setupAdminTabs() {
       if (tab === 'books')     loadAdminBooks();
       if (tab === 'voting')    loadAdminVoting();
       if (tab === 'analytics') loadAnalytics();
-      if (tab === 'users')     { loadAdminClubs(); loadAllUsers(); renderGenreManager(); loadAdminManageNm(); loadAdminMembers(); }
+      if (tab === 'users')     { loadAdminClubs(); loadAllUsers(); renderGenreManager(); loadAdminManageNm(); loadAdminMembers(); loadManageAnnouncements(adminClubId, 'admin-ann-list'); }
     });
   });
 }
@@ -3037,6 +3052,7 @@ async function loadAnalyticsCtx(ctx) {
 async function loadAnalytics() {
   await loadAnalyticsCtx('admin');
   await loadAdminNextMeeting();
+  await loadAnnouncements(adminClubId, 'admin-announcements-section');
 }
 function loadManageAnalytics() { return loadAnalyticsCtx('manage'); }
 function loadMemberStats()     { return loadAnalyticsCtx('stats'); }

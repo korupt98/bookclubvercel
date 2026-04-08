@@ -550,6 +550,7 @@
     <!-- Stats -->
     <section id="admin-tab-analytics" class="tab-pane active">
       <div id="admin-next-meeting-banner" class="next-meeting-banner hidden"></div>
+      <div id="admin-announcements-section" class="hidden"></div>
       <div class="section-head">
         <h2>Stats <span id="analytics-club-label" class="dim"></span></h2>
       </div>
@@ -619,6 +620,22 @@
           </div>
           <p id="admin-nm-msg" class="msg hidden"></p>
         </div>
+      </div>
+
+      <!-- Announcements -->
+      <div class="card admin-card mb-lg" id="admin-manage-announcements-card">
+        <div class="section-head" style="margin-bottom:.75rem">
+          <h3 style="margin:0">Announcements</h3>
+        </div>
+        <div class="field">
+          <label>New Announcement</label>
+          <textarea id="admin-ann-content" rows="3" placeholder="Write an announcement visible to all club members…" style="width:100%;resize:vertical"></textarea>
+        </div>
+        <div class="row gap-sm mt-sm">
+          <button class="btn btn-primary btn-sm" onclick="adminAddAnnouncement()">Post Announcement</button>
+        </div>
+        <p id="admin-ann-msg" class="msg hidden"></p>
+        <div id="admin-ann-list" class="mt-sm"></div>
       </div>
 
       <!-- Book Clubs Management -->
